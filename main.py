@@ -12,18 +12,18 @@ from PySide6.QtWidgets import (
     QMainWindow,    QMessageBox,    QMenu
 )
 
-import vector_graphics as vg
+import vectormath as Vm
              
 # Klasse für GUI Fenster
 class Window(QMainWindow):
     def __init__(self, parent: QMainWindow):
         super().__init__(parent)
 
-        self.view : vg.View = vg.View(QVector2D(640,480))
-        self.canvas : vg.Canvas = vg.Canvas(parent, QVector2D(640, 480))
+        self.view : Vm.View = Vm.View(QVector2D(640,480))
+        self.canvas : Vm.Canvas = Vm.Canvas(parent, QVector2D(640, 480))
 
-        self.testrect : vg.Rectangle = vg.Rectangle(QVector2D(50, 50), QVector2D(50, 50))
-        self.scene : vg.Scene = vg.Scene()
+        self.testrect : Vm.Rectangle = Vm.Rectangle(QVector2D(50, 50), QVector2D(50, 50))
+        self.scene : Vm.Scene = Vm.Scene()
 
         self.scene.attach_object(self.testrect)
         self.canvas.draw_scene(self.scene, self.view)
