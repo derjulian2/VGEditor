@@ -8,4 +8,6 @@ pip3 install pyside6
 
 for this you need the python3-venv and python3-pip packages
 
-always use the .gitignore file as it excludes any venv folders
+alternatively pyside6 can be installed system-wide using pip
+
+always use the .gitignore file as it excludes any venv or __pycache__ folders
