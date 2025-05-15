@@ -12,24 +12,24 @@ from PySide6.QtWidgets import (
     QMainWindow,    QMessageBox,    QMenu
 )
 
-import vectormath as Vm
+from Shapes import Rectangle, Circle
+from Canvas import Canvas
              
 # Klasse für GUI Fenster
 class Window(QMainWindow):
     def __init__(self, parent: QMainWindow):
         super().__init__(parent)
 
-        self.view : Vm.View = Vm.View(QVector2D(640,480))
-        self.canvas : Vm.Canvas = Vm.Canvas(parent, QVector2D(640, 480))
-
-        self.testrect : Vm.Rectangle = Vm.Rectangle(QVector2D(50, 50), QVector2D(50, 50))
-        self.scene : Vm.Scene = Vm.Scene()
-
-        self.scene.attach_object(self.testrect)
-        self.canvas.draw_scene(self.scene, self.view)
-
-
+        self.canvas : Canvas = Canvas(parent, QSize(640, 480))
         self.setCentralWidget(self.canvas)
+
+        self.testrect : Rectangle = Rectangle(QVector2D(50, 50), QVector2D(50, 50))
+        self.testcirc : Circle = Circle(QVector2D(100, 100), 75)
+        self.testcirc.fill_color = QColor(0, 255, 0)
+
+        self.canvas.scene.attach_objects([self.testcirc, self.testrect])
+
+
 
         self.menu_bar : QMenuBar = self.menuBar()
 
@@ -48,10 +48,10 @@ class Window(QMainWindow):
 
         self.toolbar : QToolBar = self.addToolBar("Tools")
         self.toolbar.setIconSize(QSize(16, 16))
-        # Clear Funktionalität
+
         clear_canvas_action : QAction = self.toolbar.addAction("Clear")
         clear_canvas_action.triggered.connect(self.action_clear)
-        # Anbinden der Menü-Actions an die Toolbar
+
         self.toolbar.addActions([file_open_action, file_save_action, file_close_action, help_information_action])
     
     # File-Operationen wie in d) gefordert
@@ -59,15 +59,15 @@ class Window(QMainWindow):
     def action_open(self):
         pass
         file_name, selected_filter = QFileDialog.getOpenFileName(self, "Choose a File", "", "Images (*.png *.xpm *.jpg)")
-        if (file_name):
-            self.paint_area.load_image(file_name)
+        #if (file_name):
+        #    self.paint_area.load_image(file_name)
 
     # Raussuchen eines Speicherplatzes für aktuelles Bild via QFileDialog
     def action_save(self):
         pass
         file_name, selected_filter = QFileDialog.getSaveFileName(self, "Choose a Location", "", "Images (*.png *.xpm *.jpg)")
-        if (file_name):
-            self.paint_area.save_image(file_name)
+        #if (file_name):
+        #    self.paint_area.save_image(file_name)
 
     # Beenden des Programms mit Sicherheitsabfrage
     def action_close(self):
