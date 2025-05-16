@@ -5,10 +5,11 @@ from PySide6.QtWidgets import QWidget
 
 from PySide6.QtGui import (
     QVector2D,  QPainter,       QImage, 
-    QColor,     QPaintEvent
+    QColor,     QPaintEvent,    QMouseEvent
 )
 
-from PySide6.QtCore import QPointF, QSize
+from PySide6.QtCore import QPointF, QSize, QPoint
+import Utility
 #
 # scene class 
 #
@@ -35,6 +36,9 @@ class Scene:
     def draw(self, painter : QPainter, view : View):
         for shape in self.attached_elements:
             shape.draw(painter, view)
+
+    def clear(self):
+        self.attached_elements.clear()
 #
 # canvas widget class
 #
@@ -50,11 +54,20 @@ class Canvas(QWidget):
         self.scene : Scene = Scene()
         self.view : View = View(QVector2D(dimensions.width(), dimensions.height()))
 
+        self.move_state : bool = False
+        self.moving : bool = False
+        self.anchor_point: QPoint = QPoint(0, 0)
+        self.anchor_view_point : QPoint = QPoint(0, 0)
+
         self.clear()
+
+    def setMoveMode(self, state : bool) -> None:
+        self.move_state = state
 
     def paintEvent(self, event : QPaintEvent):
         painter : QPainter = QPainter(self)
         scene_painter : QPainter = QPainter(self.image)
+        scene_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         self.scene.draw(scene_painter, self.view)
         painter.drawImage(0, 0, self.image)
@@ -62,14 +75,23 @@ class Canvas(QWidget):
         scene_painter.end()
         painter.end()
 
+    def mousePressEvent(self, event : QMouseEvent):
+        if (self.move_state):
+            self.moving = True
+            self.anchor_view_point = Utility.toQPoint(self.view.top_left)
+            self.anchor_point = event.pos()
 
-    def save_image(self, filepath : str):
-        self.image.save(filepath)
+    def mouseReleaseEvent(self, event : QMouseEvent):
+        if (self.move_state):
+            self.moving = False
 
-    def load_image(self, filepath : str):
-        self.image.load(filepath)
-        self.update()
+    def mouseMoveEvent(self, event : QMouseEvent):
+        if (self.move_state and self.moving):
+            self.view.top_left = Utility.toQVector2D(self.anchor_view_point) + Utility.toQVector2D(self.anchor_point - event.pos())
+            self.image.fill(QColor(255, 255, 255))
+            self.update()
 
     def clear(self, color : QColor = QColor(255, 255, 255)):
+        self.scene.clear()
         self.image.fill(color)
         self.update()
