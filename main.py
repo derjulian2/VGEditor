@@ -8,5 +8,5 @@ if __name__ == "__main__":
 
     main_window : Window = Window(None)
     main_window.show()
-
+    
     app.exec()

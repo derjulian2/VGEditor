@@ -9,6 +9,8 @@ from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen, QBrush, QPolygon
 from math import sin, cos, radians
 
 from View import View
+
+import Utility
 #
 # base class for all other shapes
 #
@@ -21,29 +23,30 @@ class Shape:
                  fill_color : QColor = QColor(255, 0, 0), 
                  outline_color : QColor = QColor(0, 255, 0), 
                  outline_width : float = 2):
-        self.fill_color : QColor = fill_color
-        self.outline_color : QColor = outline_color
-        self.outline_width : float = outline_width
-        self.bounding_box : QRectF = bounding_box
-        self.show_bounding_box : bool = False
-        self.show_fill_body : bool = True
+        self.fillColor : QColor = fill_color
+        self.outlineColor : QColor = outline_color
+        self.outlineWidth : float = outline_width
+        self.boundingBox : QRectF = bounding_box
+        self.showBoundingBox : bool = False
+        self.showFillBody : bool = True
         self.__painterpath__ : QPainterPath = QPainterPath()
 
-    def move(self, new_position : QPointF) -> None:
-        self.bounding_box.setTopLeft(new_position)
+    def move(self, pos : QPointF) -> None:
+        self.boundingBox.setTopLeft(pos)
 
-    def resize(self, new_size : QSizeF) -> None:
-        self.bounding_box.setSize(new_size)
+    def resize(self, size : QSizeF) -> None:
+        self.boundingBox.setSize(size)
     
     def draw(self, painter : QPainter, view : View) -> None:
-        if (self.show_fill_body):
-            painter.fillPath(self.__painterpath__, QBrush(self.fill_color))
-        if (self.outline_width > 0):
-            painter.setPen(QPen(self.outline_color, self.outline_width))
+        if (self.showFillBody):
+            painter.fillPath(self.__painterpath__, QBrush(self.fillColor))
+        if (self.outlineWidth > 0):
+            painter.setPen(QPen(self.outlineColor, self.outlineWidth))
             painter.drawPath(self.__painterpath__)
-        if (self.show_bounding_box):
+        if (self.showBoundingBox):
             painter.setPen(QPen(QColor(0, 0, 255), 2.0))
-            painter.drawRect(QRectF(view.transform(self.bounding_box.topLeft()), self.bounding_box.size()))
+            painter.drawRect(QRectF(view.transformPoint(self.boundingBox.topLeft()), 
+                                    view.transformSize(self.boundingBox.size())))
 
 #
 # rectangle shape
@@ -53,11 +56,11 @@ class Shape:
 class Rectangle(Shape):
     def __init__(self, position : QPointF, size : QSizeF):
         super().__init__(QRectF(position.x(), position.y(), size.width(), size.height()))
-        self.rect : QRectF = QRectF(position, size)
 
     def draw(self, painter : QPainter, view : View) -> None:
         self.__painterpath__.clear()
-        self.__painterpath__.addRect(QRectF(view.transform(self.rect.topLeft()), self.rect.size()))
+        self.__painterpath__.addRect(QRectF(view.transformPoint(self.boundingBox.topLeft()), 
+                                            view.transformSize(self.boundingBox.size())))
         super().draw(painter, view)
 #
 # circle shape
@@ -70,9 +73,20 @@ class Circle(Shape):
         self.midpoint : QPointF = midpoint
         self.radius : float = radius
 
+    def move(self, pos : QPointF):
+        super().move(pos)
+        self.midpoint = pos + QPointF(self.radius, self.radius)
+
+    def resize(self, size : QSizeF):
+        super().resize(QSizeF(size.width(), size.width()))
+        self.midpoint = self.boundingBox.topLeft() + 0.5 * QPointF(size.width(), size.width())
+        self.radius = 0.5 * size.width()
+
     def draw(self, painter : QPainter, view : View):
         self.__painterpath__.clear()
-        self.__painterpath__.addEllipse(view.transform(self.midpoint), self.radius, self.radius)
+        radius_proj : QSizeF = view.transformSize(QSizeF(self.radius, self.radius))
+        self.__painterpath__.addEllipse(view.transformPoint(self.midpoint), 
+                                        radius_proj.width(), radius_proj.width())
         super().draw(painter, view)
 #
 # star shape
@@ -107,12 +121,23 @@ class Star(Shape):
         for point in points:
             self.polygon.append(point)
 
+    def move(self, pos : QPointF):
+        super().move(pos)
+        self.midpoint = pos + QPointF(self.radius, self.radius)
+        self.__calculate_edges__()
+
+    def resize(self, size : QSizeF):
+        super().resize(QSizeF(size.width(), size.width()))
+        self.midpoint = self.boundingBox.topLeft() + 0.5 * QPointF(size.width(), size.width())
+        self.radius = 0.5 * size.width()
+        self.__calculate_edges__()
+
     def draw(self, painter : QPainter, view : View):
         self.__painterpath__.clear()
         
         transformed_polygon : QPolygonF = QPolygonF()
         for point in self.polygon.toList():
-            transformed_polygon.append(view.transform(point))
+            transformed_polygon.append(view.transformPoint(point))
 
         self.__painterpath__.addPolygon(transformed_polygon)
         super().draw(painter, view)
