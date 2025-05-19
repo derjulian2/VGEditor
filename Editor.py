@@ -1,4 +1,4 @@
-import PySide6.Qt.resources
+
 from Shapes import Shape
 from View import View
 import Utility
@@ -27,28 +27,30 @@ from PySide6.QtCore import Qt
 #
 class EditorScene:
     def __init__(self):
-        self.attached_elements : list[Shape] = []
+        self.attachedShapes : list[Shape] = []
 
     def attach_object(self, object : Shape):
-        self.attached_elements.append(object)
+        self.attachedShapes.append(object)
     
     # append list of elements
     def attach_objects(self, objects : list[Shape]):
         for obj in objects:
-            self.attached_elements.append(obj)
+            self.attachedShapes.append(obj)
 
     # render the entire scene using the passed painter and view
-    def draw(self, painter : QPainter, view : View):
-        for shape in self.attached_elements:
-            shape.draw(painter, view)
+    def draw(self, painter : QPainter):
+        for shape in self.attachedShapes:
+            shape.draw(painter)
 
     def clear(self):
-        self.attached_elements.clear()
+        self.attachedShapes.clear()
 #
 # editor-camera class
 #
 # used to modularize the behaviour of
 # viewing the canvas through a viewport
+#
+# effectively makes for cleaner code in EditorCanvas
 #
 class EditorCamera(View):
     def __init__(self, viewportSize : QSizeF):
@@ -62,7 +64,8 @@ class EditorCamera(View):
     def mousePressEvent(self, event : QMouseEvent):
         if (self.shouldMove):
             self.isMoving = True
-            self.anchorPoint = Utility.QPointFCast(event.pos())
+            self.anchorPoint = Utility.toQPointF(event.pos())
+            self.anchorViewPoint = self.topLeft
 
     def mouseReleaseEvent(self, event : QMouseEvent):
         if (self.shouldMove):
@@ -70,7 +73,7 @@ class EditorCamera(View):
 
     def mouseMoveEvent(self, event : QMouseEvent):
         if (self.shouldMove and self.isMoving):
-            self.center = self.anchorViewPoint + self.transformPointInverse(self.anchorPoint) - self.transformPointInverse(Utility.QPointFCast(event.pos()))
+            self.topLeft = self.anchorViewPoint + self.mapToWorld(self.anchorPoint) - self.mapToWorld(Utility.toQPointF(event.pos()))
     
     def wheelEvent(self, event : QWheelEvent):
         if (self.shouldMove):
@@ -85,6 +88,8 @@ class EditorCamera(View):
 #
 # used to modularize the behaviour of editing a shape
 # via mouse movements directly in the editor
+#
+# effectively makes for cleaner code in EditorCanvas
 #
 class EditorMouseShape:
     def __init__(self):
@@ -106,13 +111,13 @@ class EditorMouseShape:
         self.shape = None
         self.hasShape = False
 
-    def draw(self, painter : QPainter, view : View):
+    def draw(self, painter : QPainter):
         if (self.hasShape):
-            self.shape.draw(painter, view)
+            self.shape.draw(painter)
 
     def mousePressEvent(self, event : QMouseEvent, camera : EditorCamera):
         if (self.hasShape):
-            self.shape.move(camera.transformPointInverse(Utility.QPointFCast(event.pos())))
+            self.shape.move(camera.mapToWorld(Utility.toQPointF(event.pos())))
             self.editShape = True
 
     def mouseReleaseEvent(self, widget : QWidget, event : QMouseEvent, scene : EditorScene):
@@ -123,7 +128,8 @@ class EditorMouseShape:
 
     def mouseMoveEvent(self, event : QMouseEvent, camera : EditorCamera):
         if (self.editShape):
-            self.shape.resize(camera.transformSizeInverse(Utility.QSizeFCast(Utility.QPointFCast(event.pos()) - camera.transformPoint(self.shape.boundingBox.topLeft()))))
+            self.shape.resize(Utility.toQSizeF(
+                camera.mapToWorld(Utility.toQPointF(event.pos())) - self.shape.boundingBox.topLeft()))
 #
 # canvas widget class
 #
@@ -152,6 +158,7 @@ class EditorCanvas(QWidget):
     def setMoveMode(self, state : bool) -> None:
         self.camera.shouldMove = state
         self.ems.cancel()
+        self.setCursor(Qt.CursorShape.ArrowCursor)
 
     #
     # method to attach a temporary shape to the mouse cursor
@@ -170,8 +177,10 @@ class EditorCanvas(QWidget):
         scene_painter : QPainter = QPainter(self.image)
         scene_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        self.scene.draw(scene_painter, self.camera)
-        self.ems.draw(scene_painter, self.camera)
+        self.camera.updateTransform()
+        scene_painter.setTransform(self.camera.transform)
+        self.scene.draw(scene_painter)
+        self.ems.draw(scene_painter)
         painter.drawImage(0, 0, self.image)
 
         scene_painter.end()
@@ -200,7 +209,7 @@ class EditorCanvas(QWidget):
 
     def clear(self, color : QColor = QColor(255, 255, 255)):
         self.scene.clear()
-        self.camera.center = QPointF(0.0, 0.0)
+        self.camera.topLeft = QPointF(0.0, 0.0)
         self.camera.zoomFactor = 1.0
         self.image.fill(color)
         self.update()

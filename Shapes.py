@@ -8,8 +8,6 @@ from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen, QBrush, QPolygon
 
 from math import sin, cos, radians
 
-from View import View
-
 import Utility
 #
 # base class for all other shapes
@@ -37,7 +35,7 @@ class Shape:
     def resize(self, size : QSizeF) -> None:
         self.boundingBox.setSize(size)
     
-    def draw(self, painter : QPainter, view : View) -> None:
+    def draw(self, painter : QPainter) -> None:
         if (self.showFillBody):
             painter.fillPath(self.__painterpath__, QBrush(self.fillColor))
         if (self.outlineWidth > 0):
@@ -45,8 +43,8 @@ class Shape:
             painter.drawPath(self.__painterpath__)
         if (self.showBoundingBox):
             painter.setPen(QPen(QColor(0, 0, 255), 2.0))
-            painter.drawRect(QRectF(view.transformPoint(self.boundingBox.topLeft()), 
-                                    view.transformSize(self.boundingBox.size())))
+            painter.drawRect(QRectF(self.boundingBox.topLeft(), 
+                                    self.boundingBox.size()))
 
 #
 # rectangle shape
@@ -57,11 +55,11 @@ class Rectangle(Shape):
     def __init__(self, position : QPointF, size : QSizeF):
         super().__init__(QRectF(position.x(), position.y(), size.width(), size.height()))
 
-    def draw(self, painter : QPainter, view : View) -> None:
+    def draw(self, painter : QPainter) -> None:
         self.__painterpath__.clear()
-        self.__painterpath__.addRect(QRectF(view.transformPoint(self.boundingBox.topLeft()), 
-                                            view.transformSize(self.boundingBox.size())))
-        super().draw(painter, view)
+        self.__painterpath__.addRect(QRectF(self.boundingBox.topLeft(), 
+                                            self.boundingBox.size()))
+        super().draw(painter)
 #
 # circle shape
 #
@@ -82,26 +80,25 @@ class Circle(Shape):
         self.midpoint = self.boundingBox.topLeft() + 0.5 * QPointF(size.width(), size.width())
         self.radius = 0.5 * size.width()
 
-    def draw(self, painter : QPainter, view : View):
+    def draw(self, painter : QPainter):
         self.__painterpath__.clear()
-        radius_proj : QSizeF = view.transformSize(QSizeF(self.radius, self.radius))
-        self.__painterpath__.addEllipse(view.transformPoint(self.midpoint), 
-                                        radius_proj.width(), radius_proj.width())
-        super().draw(painter, view)
+        self.__painterpath__.addEllipse(self.midpoint, 
+                                        self.radius, self.radius)
+        super().draw(painter)
 #
 # star shape
 #
-# defined by a center-point, an outer and inner radius and the number of edges
+# defined by a center-point, an outer and inner radius and the number of outer-vertices
 #
 class Star(Shape):
-    def __init__(self, midpoint : QPointF, radius : float, num_edges : int):
-        if (num_edges < 3):
-            raise AttributeError("star must have at least 3 edges")
+    def __init__(self, midpoint : QPointF, radius : float, num_outer_vertices : int):
+        if (num_outer_vertices < 3):
+            raise AttributeError("star must have at least 3 outer vertices")
         super().__init__(QRectF(midpoint.x() - radius, midpoint.y() - radius, 2 * radius, 2 * radius))
         self.midpoint = midpoint
         self.radius = radius
         self.inner_radius = radius * 0.4
-        self.num_edges = num_edges
+        self.num_outer_verts = num_outer_vertices
         self.polygon : QPolygonF = QPolygonF()
         self.__calculate_edges__()
 
@@ -109,13 +106,13 @@ class Star(Shape):
         points : list[QPointF] = []
 
         angle : int = 0
-        inner_angle_offset : int = int(180/self.num_edges)
+        inner_angle_offset : int = int(180/self.num_outer_verts)
         while (angle < 360):
             points.append(self.midpoint + QPointF(self.radius * cos(radians(angle)), 
                                                   self.radius * sin(radians(angle))))
             points.append(self.midpoint + QPointF(self.inner_radius * cos(radians(angle + inner_angle_offset)), 
                                                   self.inner_radius * sin(radians(angle + inner_angle_offset))))
-            angle += int(360/self.num_edges)
+            angle += int(360/self.num_outer_verts)
 
         self.polygon.clear()
         for point in points:
@@ -132,12 +129,7 @@ class Star(Shape):
         self.radius = 0.5 * size.width()
         self.__calculate_edges__()
 
-    def draw(self, painter : QPainter, view : View):
+    def draw(self, painter : QPainter):
         self.__painterpath__.clear()
-        
-        transformed_polygon : QPolygonF = QPolygonF()
-        for point in self.polygon.toList():
-            transformed_polygon.append(view.transformPoint(point))
-
-        self.__painterpath__.addPolygon(transformed_polygon)
-        super().draw(painter, view)
+        self.__painterpath__.addPolygon(self.polygon)
+        super().draw(painter)

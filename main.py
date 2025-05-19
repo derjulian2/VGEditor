@@ -3,7 +3,10 @@ from PySide6.QtWidgets import QApplication
 
 import sys
 
+import View
+
 if __name__ == "__main__":
+
     app : QApplication = QApplication(sys.argv)
 
     main_window : Window = Window(None)

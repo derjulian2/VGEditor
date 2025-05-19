@@ -1,93 +1,23 @@
 from PySide6.QtCore import QSize, QPointF, QSizeF
 
 from PySide6.QtGui import (
-    QImage,         QPen,           QPainter,
-    QColor,         QAction,        QIcon,
-    QPaintEvent,    QMouseEvent,    QCloseEvent
+    QColor,     QAction,    QIcon,    QCloseEvent
 )
 
 from PySide6.QtWidgets import (
     QFrame,         QMenuBar,       QToolBar,
     QVBoxLayout,    QFileDialog,    QMessageBox,
     QMainWindow,    QMessageBox,    QMenu,
-    QDoubleSpinBox, QLabel,         QWidget,
-    QPushButton,    QDialog,        QSpinBox,
-    QHBoxLayout
 )
 
-from Shapes import Rectangle, Circle, Star, Shape
+from Shapes import Rectangle, Circle, Star
 from Editor import EditorCanvas 
 
-class RGBColorSpinBox(QWidget):
-    def __init__(self, parent : QWidget, label : str):
-        super().__init__(parent)
-
-        self.spinBoxLayout : QHBoxLayout = QHBoxLayout()
-
-        self.label : QLabel = QLabel(label)
-        self.R : QSpinBox = QSpinBox(self)
-        self.G : QSpinBox = QSpinBox(self)
-        self.B : QSpinBox = QSpinBox(self)
-        self.R.setRange(0, 255)
-        self.G.setRange(0, 255)
-        self.B.setRange(0, 255)
-
-        self.spinBoxLayout.addWidget(self.label)
-        self.spinBoxLayout.addWidget(self.R)
-        self.spinBoxLayout.addWidget(self.G)
-        self.spinBoxLayout.addWidget(self.B)
-        self.setLayout(self.spinBoxLayout)
-
-    def getColor(self) -> QColor:
-        return QColor(self.R.value(), self.B.value(), self.G.value())
-        
-#
-# new-shape-dialog
-#
-class NewShapeDialog(QDialog):
-    def __init__(self, label : str, shape : Shape):
-        super().__init__()
-        self.shape : Shape = shape
-
-        self.dialogLayout : QVBoxLayout = QVBoxLayout()
-        self.label : QLabel = QLabel(label)
-
-        self.exitButtonLayout : QHBoxLayout = QHBoxLayout()
-        self.buttonDone : QPushButton = QPushButton("Done", self)
-        self.buttonCancel : QPushButton = QPushButton("Cancel", self)
-        self.buttonDone.clicked.connect(self.accept)
-        self.buttonCancel.clicked.connect(self.reject)
-        self.exitButtonLayout.addWidget(self.buttonDone)
-        self.exitButtonLayout.addWidget(self.buttonCancel)
-
-        if (isinstance(self.shape, Star)):
-            self.innerRadius : QDoubleSpinBox = QDoubleSpinBox(self)
-            self.numEdges : QSpinBox = QSpinBox(self)
-            self.innerRadius.setRange(10.0, 512.0)
-            self.numEdges.setRange(3, 64)
-
-        self.fillColor : RGBColorSpinBox = RGBColorSpinBox(self, "Fill-Color:")
-        self.outlineColor : RGBColorSpinBox = RGBColorSpinBox(self, "Outline-Color:")
-        self.outlineWidth : QDoubleSpinBox = QDoubleSpinBox(self)
-
-        self.dialogLayout.addWidget(self.label)
-
-        if (isinstance(self.shape, Star)):
-            self.dialogLayout.addWidget(QLabel("Star Inner-Radius:"))
-            self.dialogLayout.addWidget(self.innerRadius)
-            self.dialogLayout.addWidget(QLabel("Star Edges:"))
-            self.dialogLayout.addWidget(self.numEdges)
-        self.dialogLayout.addWidget(self.fillColor)
-        self.dialogLayout.addWidget(self.outlineColor)
-        self.dialogLayout.addWidget(QLabel("Outline-Width:"))
-        self.dialogLayout.addWidget(self.outlineWidth)
-        self.dialogLayout.addLayout(self.exitButtonLayout)
-        self.setLayout(self.dialogLayout)
-
+from NewShapeWidgets import NewShapeDialog
 #
 # window class
 #
-# will show the actual vector-graphics-editor gui
+# shows the actual editor-screen of the vector-graphics-editor
 #
 class Window(QMainWindow):
     def __init__(self, parent: QMainWindow):
@@ -122,8 +52,8 @@ class Window(QMainWindow):
 
         file_close_action : QAction = file_button.addAction(QIcon("icons/door--arrow.png"), "Close")
         help_information_action : QAction = help_button.addAction(QIcon("icons/information.png"), "About")
-        move_mode_action : QAction = self.toolbar.addAction(QIcon("icons/arrow-move.png"), "Move Scene")
-        move_mode_action.setCheckable(True)
+        self.move_mode_action : QAction = self.toolbar.addAction(QIcon("icons/arrow-move.png"), "Move Scene")
+        self.move_mode_action.setCheckable(True)
         
         
         file_new_action.triggered.connect(self.action_new)
@@ -132,7 +62,7 @@ class Window(QMainWindow):
         example_1_action.triggered.connect(self.action_example_1)
         example_2_action.triggered.connect(self.action_example_2)
         example_3_action.triggered.connect(self.action_example_3)
-        move_mode_action.triggered.connect(self.action_move)
+        self.move_mode_action.triggered.connect(self.action_move)
 
         add_rect_action.triggered.connect(self.action_add_rect)
         add_circ_action.triggered.connect(self.action_add_circ)
@@ -142,7 +72,7 @@ class Window(QMainWindow):
                                  add_rect_action,
                                  add_circ_action,
                                  add_star_action,
-                                 move_mode_action, 
+                                 self.move_mode_action, 
                                  file_close_action, 
                                  help_information_action])
 
@@ -155,6 +85,8 @@ class Window(QMainWindow):
 
     def action_add_rect(self):
         self.canvas.setMoveMode(False)
+        self.move_mode_action.setChecked(False)
+
         rect : Rectangle = Rectangle(QPointF(0.0, 0.0), QSizeF(0.0, 0.0))
         dialog : NewShapeDialog = NewShapeDialog("Configure: new Rectangle", rect)
         dialog.exec()
@@ -163,10 +95,12 @@ class Window(QMainWindow):
             self.canvas.attachToMouse(rect)
             rect.fillColor = dialog.fillColor.getColor()
             rect.outlineColor = dialog.outlineColor.getColor()
-            rect.outlineWidth = dialog.outlineWidth.value()
+            rect.outlineWidth = dialog.outlineWidth.spinbox.value()
 
     def action_add_circ(self):
         self.canvas.setMoveMode(False)
+        self.move_mode_action.setChecked(False)
+        
         circ : Circle = Circle(QPointF(0.0, 0.0), 0.0)
         dialog : NewShapeDialog = NewShapeDialog("Configure: new Circle", circ)
         dialog.exec()
@@ -175,10 +109,12 @@ class Window(QMainWindow):
             self.canvas.attachToMouse(circ)
             circ.fillColor = dialog.fillColor.getColor()
             circ.outlineColor = dialog.outlineColor.getColor()
-            circ.outlineWidth = dialog.outlineWidth.value()
+            circ.outlineWidth = dialog.outlineWidth.spinbox.value()
 
     def action_add_star(self):
         self.canvas.setMoveMode(False)
+        self.move_mode_action.setChecked(False)
+
         star : Star = Star(QPointF(0.0, 0.0), 0.0, 3)
         dialog : NewShapeDialog = NewShapeDialog("Configure: new Star", star)
         dialog.exec()
@@ -187,9 +123,9 @@ class Window(QMainWindow):
             self.canvas.attachToMouse(star)
             star.fillColor = dialog.fillColor.getColor()
             star.outlineColor = dialog.outlineColor.getColor()
-            star.outlineWidth = dialog.outlineWidth.value()
-            star.num_edges = dialog.numEdges.value()
-            star.inner_radius = dialog.innerRadius.value()
+            star.outlineWidth = dialog.outlineWidth.spinbox.value()
+            star.num_outer_verts = dialog.numEdges.spinbox.value()
+            star.inner_radius = dialog.innerRadius.spinbox.value()
 
     def action_example_1(self):
         self.canvas.clear()
