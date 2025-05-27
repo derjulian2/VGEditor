@@ -1,4 +1,4 @@
-from PySide6.QtCore import QSize, QSizeF, QPoint, QPointF
+from PySide6.QtCore import QSize, QSizeF, QPoint, QPointF, QRectF
 from PySide6.QtGui import QVector2D
 #
 # utility conversion functions between Qt's
@@ -27,7 +27,9 @@ def toQVector2D(other : QPointF | QPoint | QSizeF | QSize) -> QVector2D:
         return QVector2D(float(other.width()), float(other.height()))
     else:
         raise TypeError("false type passed to QVector2DCast")
-
+#
+# clamp a value to a given range
+#
 def Clamp(val : float, min : float, max : float):
     if (min > max or max < min):
         raise AttributeError("min and max mismatch")
@@ -36,3 +38,11 @@ def Clamp(val : float, min : float, max : float):
     elif (val < min):
         return min
     return val
+#
+# find out if a point is within a given rectangle
+#
+def PointInRect(p : QPointF, rect : QRectF) -> bool:
+    if (p.x() >= rect.x() and p.x() <= rect.x() + rect.width() and
+        p.y() >= rect.y() and p.y() >= rect.y() + rect.height()):
+        return True
+    return False

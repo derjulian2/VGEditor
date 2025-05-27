@@ -3,6 +3,8 @@ from Shapes import Shape
 from View import View
 import Utility
 
+from enum import Enum
+
 from PySide6.QtWidgets import QWidget
 
 
@@ -28,6 +30,7 @@ from PySide6.QtCore import Qt
 class EditorScene:
     def __init__(self):
         self.attachedShapes : list[Shape] = []
+        self.backgroundColor : QColor = QColor(255, 255, 255)
 
     def attach_object(self, object : Shape):
         self.attachedShapes.append(object)
@@ -38,7 +41,8 @@ class EditorScene:
             self.attachedShapes.append(obj)
 
     # render the entire scene using the passed painter and view
-    def draw(self, painter : QPainter):
+    def draw(self, painter : QPainter, image : QImage):
+        image.fill(self.backgroundColor)
         for shape in self.attachedShapes:
             shape.draw(painter)
 
@@ -82,16 +86,13 @@ class EditorCamera(View):
             else:
                 self.zoomFactor = Utility.Clamp(self.zoomFactor - 0.05, 0.5, 1.75)
             self.zoom(self.zoomFactor)
-
 #
-# editor-mouse-shape class
+# editor-new-shape class
 #
-# used to modularize the behaviour of editing a shape
-# via mouse movements directly in the editor
-#
+# stores information about when a new shape is created
 # effectively makes for cleaner code in EditorCanvas
 #
-class EditorMouseShape:
+class EditorNewShape:
     def __init__(self):
         self.shape : Shape = None
         self.hasShape : bool = False
@@ -131,6 +132,35 @@ class EditorMouseShape:
             self.shape.resize(Utility.toQSizeF(
                 camera.mapToWorld(Utility.toQPointF(event.pos())) - self.shape.boundingBox.topLeft()))
 #
+# editor-edit-shape class
+#        
+# stores information about when an existing shape is edited 
+#
+class EditorEditShape:
+    def __init__(self, scene : EditorScene):
+        self.shape : Shape = None
+        self.scene : EditorScene = scene
+
+    def __get_shape__(self, mpos_world : QPointF):
+        for shape in self.scene.attachedShapes:
+            if (Utility.PointInRect(mpos_world, shape.boundingBox)):
+                self.shape = shape
+                break
+
+    def mousePressEvent(self, event : QMouseEvent, camera : EditorCamera) -> None:
+        self.__get_shape__(camera.mapToWorld(Utility.toQPointF(event.pos())))
+        if not (self.shape is None):
+            self.shape.showBoundingBox = True
+
+    def mouseReleaseEvent(self) -> None:
+        pass
+
+class EditorState(Enum):
+    NONE = 0
+    NEW_SHAPE = 1
+    EDIT_SHAPE = 2
+    MOVING = 3
+#
 # canvas widget class
 #
 # custom qt-widget for drawing vector-graphic-shapes
@@ -143,9 +173,13 @@ class EditorCanvas(QWidget):
 
         self.image : QImage = QImage(dimensions, QImage.Format_RGB32)
 
+        self.state : EditorState = EditorState.NONE
+
         self.scene : EditorScene = EditorScene()
-        self.ems : EditorMouseShape = EditorMouseShape()
         self.camera : EditorCamera = EditorCamera(dimensions) 
+
+        self.newshape : EditorNewShape = EditorNewShape()
+        self.editshape : EditorEditShape = EditorEditShape(self.scene)
 
         self.clear()
 
@@ -157,7 +191,7 @@ class EditorCanvas(QWidget):
     #
     def setMoveMode(self, state : bool) -> None:
         self.camera.shouldMove = state
-        self.ems.cancel()
+        self.newshape.cancel()
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
     #
@@ -169,7 +203,7 @@ class EditorCanvas(QWidget):
     #
     def attachToMouse(self, shape : Shape):
         self.camera.shouldMove = False
-        self.ems.setShape(self, shape)
+        self.newshape.setShape(self, shape)
         
 
     def paintEvent(self, event : QPaintEvent):
@@ -179,8 +213,8 @@ class EditorCanvas(QWidget):
 
         self.camera.updateTransform()
         scene_painter.setTransform(self.camera.transform)
-        self.scene.draw(scene_painter)
-        self.ems.draw(scene_painter)
+        self.scene.draw(scene_painter, self.image)
+        self.newshape.draw(scene_painter)
         painter.drawImage(0, 0, self.image)
 
         scene_painter.end()
@@ -188,28 +222,24 @@ class EditorCanvas(QWidget):
 
     def mousePressEvent(self, event : QMouseEvent):
         self.camera.mousePressEvent(event)
-        self.ems.mousePressEvent(event, self.camera)
+        self.editshape.mousePressEvent(event, self.camera)
+        self.newshape.mousePressEvent(event, self.camera)
 
     def mouseReleaseEvent(self, event : QMouseEvent):
         self.camera.mouseReleaseEvent(event)
-        self.ems.mouseReleaseEvent(self, event, self.scene)
+        self.newshape.mouseReleaseEvent(self, event, self.scene)
 
     def mouseMoveEvent(self, event : QMouseEvent):
         self.camera.mouseMoveEvent(event)
-        self.ems.mouseMoveEvent(event, self.camera)
-
-        self.image.fill(QColor(255, 255, 255))
+        self.newshape.mouseMoveEvent(event, self.camera)
         self.update()
 
     def wheelEvent(self, event : QWheelEvent):
         self.camera.wheelEvent(event)
-        
-        self.image.fill(QColor(255, 255, 255))
         self.update()
 
     def clear(self, color : QColor = QColor(255, 255, 255)):
         self.scene.clear()
         self.camera.topLeft = QPointF(0.0, 0.0)
         self.camera.zoomFactor = 1.0
-        self.image.fill(color)
         self.update()

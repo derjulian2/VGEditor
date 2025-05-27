@@ -26,6 +26,7 @@ class Shape:
         self.outlineWidth : float = outline_width
         self.boundingBox : QRectF = bounding_box
         self.showBoundingBox : bool = False
+        self.showOutline : bool = True
         self.showFillBody : bool = True
         self.__painterpath__ : QPainterPath = QPainterPath()
 
@@ -38,7 +39,7 @@ class Shape:
     def draw(self, painter : QPainter) -> None:
         if (self.showFillBody):
             painter.fillPath(self.__painterpath__, QBrush(self.fillColor))
-        if (self.outlineWidth > 0):
+        if (self.outlineWidth > 0 and self.showOutline):
             painter.setPen(QPen(self.outlineColor, self.outlineWidth))
             painter.drawPath(self.__painterpath__)
         if (self.showBoundingBox):
