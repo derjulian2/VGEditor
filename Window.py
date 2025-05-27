@@ -10,10 +10,10 @@ from PySide6.QtWidgets import (
     QMainWindow,    QMessageBox,    QMenu,
 )
 
-from Shapes import Rectangle, Circle, Star
-from Editor import EditorCanvas 
+from Shapes import Rectangle, Ellipse, Star, Circle
+from Editor import EditorCanvas, EditorState
 
-from NewShapeWidgets import NewShapeDialog
+from NewShapeDialog import NewShapeDialog
 #
 # window class
 #
@@ -47,6 +47,7 @@ class Window(QMainWindow):
         file_new_action : QAction = file_button.addAction(QIcon("icons/blue-document--plus"), "New Scene")
 
         add_rect_action : QAction = self.addAction(QIcon(""), "add Rectangle")
+        add_ellipse_action : QAction = self.addAction(QIcon(""), "add Ellipse")
         add_circ_action : QAction = self.addAction(QIcon(""), "add Circle")
         add_star_action : QAction = self.addAction(QIcon(""), "add Star")
 
@@ -65,11 +66,13 @@ class Window(QMainWindow):
         self.move_mode_action.triggered.connect(self.action_move)
 
         add_rect_action.triggered.connect(self.action_add_rect)
+        add_ellipse_action.triggered.connect(self.action_add_ellipse)
         add_circ_action.triggered.connect(self.action_add_circ)
         add_star_action.triggered.connect(self.action_add_star)
 
         self.toolbar.addActions([file_new_action, 
                                  add_rect_action,
+                                 add_ellipse_action,
                                  add_circ_action,
                                  add_star_action,
                                  self.move_mode_action, 
@@ -81,10 +84,12 @@ class Window(QMainWindow):
             self.canvas.clear()
 
     def action_move(self, state : bool):
-        self.canvas.setMoveMode(state)
+        if (state):
+            self.canvas.setState(EditorState.SCROLL_VIEWPORT)
+        else:
+            self.canvas.setState(EditorState.NONE)
 
     def action_add_rect(self):
-        self.canvas.setMoveMode(False)
         self.move_mode_action.setChecked(False)
 
         rect : Rectangle = Rectangle(QPointF(0.0, 0.0), QSizeF(0.0, 0.0))
@@ -92,13 +97,25 @@ class Window(QMainWindow):
         dialog.exec()
 
         if (dialog.result() == True):
-            self.canvas.attachToMouse(rect)
+            self.canvas.setState(EditorState.ADD_NEW_SHAPE, rect)
             rect.fillColor = dialog.fillColor.getColor()
             rect.outlineColor = dialog.outlineColor.getColor()
             rect.outlineWidth = dialog.outlineWidth.spinbox.value()
 
+    def action_add_ellipse(self):
+        self.move_mode_action.setChecked(False)
+        
+        ell : Ellipse = Ellipse(QPointF(0.0, 0.0), QSizeF(0.0, 0.0))
+        dialog : NewShapeDialog = NewShapeDialog("Configure: new Ellipse", ell)
+        dialog.exec()
+
+        if (dialog.result() == True):
+            self.canvas.setState(EditorState.ADD_NEW_SHAPE, ell)
+            ell.fillColor = dialog.fillColor.getColor()
+            ell.outlineColor = dialog.outlineColor.getColor()
+            ell.outlineWidth = dialog.outlineWidth.spinbox.value()
+
     def action_add_circ(self):
-        self.canvas.setMoveMode(False)
         self.move_mode_action.setChecked(False)
         
         circ : Circle = Circle(QPointF(0.0, 0.0), 0.0)
@@ -106,26 +123,25 @@ class Window(QMainWindow):
         dialog.exec()
 
         if (dialog.result() == True):
-            self.canvas.attachToMouse(circ)
+            self.canvas.setState(EditorState.ADD_NEW_SHAPE, circ)
             circ.fillColor = dialog.fillColor.getColor()
             circ.outlineColor = dialog.outlineColor.getColor()
             circ.outlineWidth = dialog.outlineWidth.spinbox.value()
 
     def action_add_star(self):
-        self.canvas.setMoveMode(False)
         self.move_mode_action.setChecked(False)
 
-        star : Star = Star(QPointF(0.0, 0.0), 0.0, 3)
+        star : Star = Star(QPointF(0.0, 0.0), QSizeF(0.0, 0.0), QSizeF(0.0, 0.0), 3)
         dialog : NewShapeDialog = NewShapeDialog("Configure: new Star", star)
         dialog.exec()
 
         if (dialog.result() == True):
-            self.canvas.attachToMouse(star)
+            self.canvas.setState(EditorState.ADD_NEW_SHAPE, star)
             star.fillColor = dialog.fillColor.getColor()
             star.outlineColor = dialog.outlineColor.getColor()
             star.outlineWidth = dialog.outlineWidth.spinbox.value()
-            star.num_outer_verts = dialog.numEdges.spinbox.value()
-            star.inner_radius = dialog.innerRadius.spinbox.value()
+            star.numOuterVertices = dialog.numEdges.spinbox.value()
+            star.innerSize = QSizeF(dialog.innerRadius.spinbox.value(), dialog.innerRadius.spinbox.value())
 
     def action_example_1(self):
         self.canvas.clear()
@@ -174,7 +190,7 @@ class Window(QMainWindow):
     def action_example_3(self):
         self.canvas.clear()
 
-        star_1 : Star = Star(QPointF(150.0, 150.0), 150.0, 6)
+        star_1 : Star = Star(QPointF(150.0, 150.0), QSizeF(150.0, 150.0), QSizeF(100.0, 100.0), 12)
 
         self.canvas.scene.attach_objects([star_1])
     

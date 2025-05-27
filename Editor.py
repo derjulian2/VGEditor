@@ -28,138 +28,68 @@ from PySide6.QtCore import Qt
 # single interface, simplifying the code for 'Scene'
 #
 class EditorScene:
-    def __init__(self):
+    def __init__(self) -> None:
         self.attachedShapes : list[Shape] = []
         self.backgroundColor : QColor = QColor(255, 255, 255)
 
-    def attach_object(self, object : Shape):
+    def attach_object(self, object : Shape) -> None:
         self.attachedShapes.append(object)
     
     # append list of elements
-    def attach_objects(self, objects : list[Shape]):
+    def attach_objects(self, objects : list[Shape]) -> None:
         for obj in objects:
             self.attachedShapes.append(obj)
 
     # render the entire scene using the passed painter and view
-    def draw(self, painter : QPainter, image : QImage):
+    def draw(self, painter : QPainter, image : QImage) -> None:
         image.fill(self.backgroundColor)
         for shape in self.attachedShapes:
             shape.draw(painter)
 
-    def clear(self):
+    def clear(self) -> None:
         self.attachedShapes.clear()
+#
+# editorstate enum
+#
+# describes the user-interaction-state that the editor is in
+#
+class EditorState(Enum):
+    NONE = 0                # when the user is not doing anything except viewing the scene
+    ADD_NEW_SHAPE = 1       # when the user is adding a new shape via the editor-window
+    EDIT_EXISTING_SHAPE = 2 # when the user is editing the properties of an already existing shape
+    SCROLL_VIEWPORT = 3     # when the user is scrolling the camera around the scene
 #
 # editor-camera class
 #
-# used to modularize the behaviour of
-# viewing the canvas through a viewport
-#
-# effectively makes for cleaner code in EditorCanvas
+# stores information about viewing the canvas through a view
 #
 class EditorCamera(View):
-    def __init__(self, viewportSize : QSizeF):
+    def __init__(self, viewportSize : QSizeF) -> None:
         super().__init__(viewportSize, viewportSize)
-        self.shouldMove : bool = False
-        self.isMoving : bool = False
-
         self.anchorPoint : QPointF = QPointF()
         self.anchorViewPoint : QPointF = QPointF()
-
-    def mousePressEvent(self, event : QMouseEvent):
-        if (self.shouldMove):
-            self.isMoving = True
-            self.anchorPoint = Utility.toQPointF(event.pos())
-            self.anchorViewPoint = self.topLeft
-
-    def mouseReleaseEvent(self, event : QMouseEvent):
-        if (self.shouldMove):
-            self.isMoving = False
-
-    def mouseMoveEvent(self, event : QMouseEvent):
-        if (self.shouldMove and self.isMoving):
-            self.topLeft = self.anchorViewPoint + self.mapToWorld(self.anchorPoint) - self.mapToWorld(Utility.toQPointF(event.pos()))
-    
-    def wheelEvent(self, event : QWheelEvent):
-        if (self.shouldMove):
-            if (event.angleDelta().y() > 0):
-                self.zoomFactor = Utility.Clamp(self.zoomFactor + 0.05, 0.5, 1.75)
-            else:
-                self.zoomFactor = Utility.Clamp(self.zoomFactor - 0.05, 0.5, 1.75)
-            self.zoom(self.zoomFactor)
+        self.isMoving : bool = False
 #
 # editor-new-shape class
 #
 # stores information about when a new shape is created
-# effectively makes for cleaner code in EditorCanvas
 #
 class EditorNewShape:
     def __init__(self):
         self.shape : Shape = None
-        self.hasShape : bool = False
-        self.editShape : bool = False
-
-    def setShape(self, widget : QWidget, shape : Shape):
-        self.shape = shape
-        if not (self.shape is None):
-            self.hasShape = True
-            if not (widget is None):
-                widget.setCursor(Qt.CursorShape.CrossCursor)
-        else:
-            self.hasShape = False
-            self.editShape = False
-
-    def cancel(self):
-        self.shape = None
-        self.hasShape = False
+        self.anchor_point : QPointF = None
 
     def draw(self, painter : QPainter):
-        if (self.hasShape):
-            self.shape.draw(painter)
-
-    def mousePressEvent(self, event : QMouseEvent, camera : EditorCamera):
-        if (self.hasShape):
-            self.shape.move(camera.mapToWorld(Utility.toQPointF(event.pos())))
-            self.editShape = True
-
-    def mouseReleaseEvent(self, widget : QWidget, event : QMouseEvent, scene : EditorScene):
-        if (self.editShape):
-            scene.attach_object(self.shape)
-            self.setShape(None, None)
-            widget.setCursor(Qt.CursorShape.ArrowCursor)
-
-    def mouseMoveEvent(self, event : QMouseEvent, camera : EditorCamera):
-        if (self.editShape):
-            self.shape.resize(Utility.toQSizeF(
-                camera.mapToWorld(Utility.toQPointF(event.pos())) - self.shape.boundingBox.topLeft()))
+        self.shape.draw(painter)
 #
 # editor-edit-shape class
-#        
-# stores information about when an existing shape is edited 
+#
+# stores information about when an existing shape is edited
 #
 class EditorEditShape:
-    def __init__(self, scene : EditorScene):
+    def __init__(self):
         self.shape : Shape = None
-        self.scene : EditorScene = scene
 
-    def __get_shape__(self, mpos_world : QPointF):
-        for shape in self.scene.attachedShapes:
-            if (Utility.PointInRect(mpos_world, shape.boundingBox)):
-                self.shape = shape
-                break
-
-    def mousePressEvent(self, event : QMouseEvent, camera : EditorCamera) -> None:
-        self.__get_shape__(camera.mapToWorld(Utility.toQPointF(event.pos())))
-        if not (self.shape is None):
-            self.shape.showBoundingBox = True
-
-    def mouseReleaseEvent(self) -> None:
-        pass
-
-class EditorState(Enum):
-    NONE = 0
-    NEW_SHAPE = 1
-    EDIT_SHAPE = 2
-    MOVING = 3
 #
 # canvas widget class
 #
@@ -176,35 +106,22 @@ class EditorCanvas(QWidget):
         self.state : EditorState = EditorState.NONE
 
         self.scene : EditorScene = EditorScene()
-        self.camera : EditorCamera = EditorCamera(dimensions) 
-
+        self.camera : EditorCamera = EditorCamera(dimensions)
         self.newshape : EditorNewShape = EditorNewShape()
-        self.editshape : EditorEditShape = EditorEditShape(self.scene)
+        self.editshape : EditorEditShape = EditorEditShape()
 
         self.clear()
+    #
+    # manages the current state of the editor with every component
+    # for EDIT_EXISTING_SHAPE and ADD_NEW_SHAPE state-values a shape should be provided
+    #
+    def setState(self, state : EditorState, shape : Shape | None = None) -> None:
+        self.state = state
+        if (self.state == EditorState.ADD_NEW_SHAPE):
+            self.newshape.shape = shape
+        elif (self.state == EditorState.EDIT_EXISTING_SHAPE):
+            self.editshape.shape = shape
 
-    #
-    # decide if the canvas-camera should be
-    # scrollable/moveable or not
-    #
-    # cancels any new-shape on mouse actions
-    #
-    def setMoveMode(self, state : bool) -> None:
-        self.camera.shouldMove = state
-        self.newshape.cancel()
-        self.setCursor(Qt.CursorShape.ArrowCursor)
-
-    #
-    # method to attach a temporary shape to the mouse cursor
-    # this shape will always be displayed at the coordinates of the mouse cursor
-    # projected to the corresponding world-coordinates
-    #
-    # cancels any camera-move actions
-    #
-    def attachToMouse(self, shape : Shape):
-        self.camera.shouldMove = False
-        self.newshape.setShape(self, shape)
-        
 
     def paintEvent(self, event : QPaintEvent):
         painter : QPainter = QPainter(self)
@@ -214,28 +131,76 @@ class EditorCanvas(QWidget):
         self.camera.updateTransform()
         scene_painter.setTransform(self.camera.transform)
         self.scene.draw(scene_painter, self.image)
-        self.newshape.draw(scene_painter)
+        
+        if (self.state == EditorState.ADD_NEW_SHAPE):
+            self.newshape.draw(scene_painter)
+        
         painter.drawImage(0, 0, self.image)
 
         scene_painter.end()
         painter.end()
 
-    def mousePressEvent(self, event : QMouseEvent):
-        self.camera.mousePressEvent(event)
-        self.editshape.mousePressEvent(event, self.camera)
-        self.newshape.mousePressEvent(event, self.camera)
+    def mousePressEvent(self, event : QMouseEvent) -> None:
+        if (self.state == EditorState.ADD_NEW_SHAPE):
+            self.editshape.shape.showBoundingBox = False
+            self.setCursor(Qt.CursorShape.CrossCursor)
+            self.anchor_point = self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+        elif (self.state == EditorState.SCROLL_VIEWPORT):
+            self.editshape.shape.showBoundingBox = False
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            self.camera.anchorPoint = Utility.toQPointF(event.pos())
+            self.camera.anchorViewPoint = self.camera.topLeft
+            self.camera.isMoving = True
+        elif (self.state == EditorState.NONE):
+            for shape in self.scene.attachedShapes:
+                if (Utility.PointInRect(self.camera.mapToWorld(Utility.toQPointF(event.pos())), shape.boundingBox)):
+                    self.editshape.shape = shape
+                    shape.showBoundingBox = True
+                    self.state = EditorState.EDIT_EXISTING_SHAPE
+                    break
+        elif (self.state == EditorState.EDIT_EXISTING_SHAPE):
+            found : bool = False
+            for shape in self.scene.attachedShapes:
+                if (Utility.PointInRect(self.camera.mapToWorld(Utility.toQPointF(event.pos())), shape.boundingBox)):
+                    self.editshape.shape.showBoundingBox = False
+                    self.editshape.shape = shape
+                    shape.showBoundingBox = True
+                    found = True
+                    break
+            if not found and not (self.editshape.shape is None):
+                self.editshape.shape.showBoundingBox = False
+                self.editshape.shape = None
+                self.state = EditorState.NONE
+        self.update()
+
 
     def mouseReleaseEvent(self, event : QMouseEvent):
-        self.camera.mouseReleaseEvent(event)
-        self.newshape.mouseReleaseEvent(self, event, self.scene)
+        if (self.state == EditorState.ADD_NEW_SHAPE):
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            self.scene.attach_object(self.newshape.shape)
+            self.state = EditorState.NONE
+        elif (self.state == EditorState.SCROLL_VIEWPORT):
+            self.camera.isMoving = False 
+
 
     def mouseMoveEvent(self, event : QMouseEvent):
-        self.camera.mouseMoveEvent(event)
-        self.newshape.mouseMoveEvent(event, self.camera)
+        if (self.state == EditorState.ADD_NEW_SHAPE):
+            delta : QSizeF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchor_point
+            self.newshape.shape.center = self.anchor_point + 0.5 * delta
+            self.newshape.shape.size = Utility.toQSizeF(delta)
+        elif (self.state == EditorState.SCROLL_VIEWPORT):
+            if (self.camera.isMoving):
+                self.camera.topLeft = self.camera.anchorViewPoint + self.camera.mapToWorld(self.camera.anchorPoint) - self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+
         self.update()
 
     def wheelEvent(self, event : QWheelEvent):
-        self.camera.wheelEvent(event)
+        if (self.state == EditorState.SCROLL_VIEWPORT):
+            if (event.angleDelta().y() > 0):
+                self.camera.zoomFactor = Utility.Clamp(self.camera.zoomFactor + 0.05, 0.5, 1.75)
+            else:
+                self.camera.zoomFactor = Utility.Clamp(self.camera.zoomFactor - 0.05, 0.5, 1.75)
+            self.camera.zoom(self.camera.zoomFactor)
         self.update()
 
     def clear(self, color : QColor = QColor(255, 255, 255)):

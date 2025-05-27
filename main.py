@@ -3,7 +3,6 @@ from PySide6.QtWidgets import QApplication
 
 import sys
 
-import View
 
 if __name__ == "__main__":
 

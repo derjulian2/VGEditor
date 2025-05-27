@@ -1,5 +1,6 @@
 from PySide6.QtCore import QSize, QSizeF, QPoint, QPointF, QRectF
 from PySide6.QtGui import QVector2D
+from math import isnan
 #
 # utility conversion functions between Qt's
 # vectors, points and sizes
@@ -39,10 +40,18 @@ def Clamp(val : float, min : float, max : float):
         return min
     return val
 #
-# find out if a point is within a given rectangle
+# determines if a point is within a given rectangle
 #
 def PointInRect(p : QPointF, rect : QRectF) -> bool:
-    if (p.x() >= rect.x() and p.x() <= rect.x() + rect.width() and
-        p.y() >= rect.y() and p.y() >= rect.y() + rect.height()):
+    if (p.x() >= rect.x() and p.x() <= rect.x() + rect.width() and p.y() >= rect.y() and p.y() <= rect.y() + rect.height()):
         return True
     return False
+#
+# retrieve the sign of a number. returns 1 in case of 0, raises error if NaN
+#
+def sign(f : float) -> int:
+    if (isnan(f)):
+        raise AttributeError("float was NaN")
+    if (f >= 0.0):
+        return 1
+    return -1
