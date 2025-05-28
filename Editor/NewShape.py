@@ -4,10 +4,13 @@ from PySide6.QtWidgets import (
     QLabel,     QSpinBox,       QDoubleSpinBox, 
     QDialog,    QPushButton
 )
-
-from PySide6.QtGui import QColor
-
-from Shapes import Shape, Star
+from PySide6.QtCore import QPointF, QSizeF
+from PySide6.QtGui import QColor, QPainter, QMouseEvent
+from PySide6.QtCore import Qt
+from Shapes import Shape, Rectangle, Ellipse, Circle, Star
+from Editor.Camera import Camera
+from Editor.Scene import Scene
+import Utility
 #
 # labeled spinbox
 #
@@ -75,12 +78,21 @@ class RGBColorSpinBox(QWidget):
 # that cannot be set using the editor directly (e.g. through mouse-movements)
 #
 class NewShapeDialog(QDialog):
-    def __init__(self, label : str, shape : Shape):
+    def __init__(self, shape : Shape):
         super().__init__()
         self.shape : Shape = shape
 
         self.dialogLayout : QVBoxLayout = QVBoxLayout()
-        self.label : QLabel = QLabel(label)
+        label_str : str = "configure new "
+        if (isinstance(shape, Rectangle)):
+            label_str += "Rectangle"
+        elif (isinstance(shape, Circle)): # circle before ellipse because all circles are also ellipses
+            label_str += "Circle"
+        elif (isinstance(shape, Ellipse)):
+            label_str += "Ellipse"
+        elif (isinstance(shape, Star)):
+            label_str += "Star"
+        self.label : QLabel = QLabel(label_str)
 
         self.exitButtonLayout : QHBoxLayout = QHBoxLayout()
         self.buttonDone : QPushButton = QPushButton("Done", self)
@@ -96,18 +108,76 @@ class NewShapeDialog(QDialog):
         self.outlineColor : RGBColorSpinBox = RGBColorSpinBox(self, "Outline-Color:")
         self.outlineWidth : LabeledDoubleSpinBox = LabeledDoubleSpinBox(self, "Outline-Width:")
 
-        if (isinstance(self.shape, Star)):
-            self.dialogLayout.addWidget(self.innerRadius)
-            self.dialogLayout.addWidget(self.numEdges)
-
         self.buttonDone.clicked.connect(self.accept)
         self.buttonCancel.clicked.connect(self.reject)
 
         self.exitButtonLayout.addWidget(self.buttonDone)
         self.exitButtonLayout.addWidget(self.buttonCancel)
 
+        self.dialogLayout.addWidget(self.label)
+        if (isinstance(self.shape, Star)):
+            self.dialogLayout.addWidget(self.innerRadius)
+            self.dialogLayout.addWidget(self.numEdges)
         self.dialogLayout.addWidget(self.fillColor)
         self.dialogLayout.addWidget(self.outlineColor)
         self.dialogLayout.addWidget(self.outlineWidth)
         self.dialogLayout.addLayout(self.exitButtonLayout)
         self.setLayout(self.dialogLayout)
+
+    def configureShape(self) -> None:
+        if (self.result()):
+            self.shape.fillColor = self.fillColor.getColor()
+            self.shape.outlineColor = self.outlineColor.getColor()
+            self.shape.outlineWidth = self.outlineWidth.spinbox.value()
+            if (isinstance(self.shape, Star)):
+                self.shape.numOuterVertices = self.numEdges.spinbox.value()
+                self.shape.innerSize = QSizeF(self.innerRadius.spinbox.value(), self.innerRadius.spinbox.value())
+
+#
+# editor-new-shape class
+#
+# stores information and logic about when a new shape is created
+#
+class NewShape:
+    def __init__(self, parent : QWidget, camera : Camera, scene : Scene):
+        self.parent : QWidget = parent
+        self.camera : Camera = camera
+        self.scene : Scene = scene
+
+        self.shape : Shape = None
+        self.anchor_point : QPointF = None
+        self.dragging : bool = False
+
+        self.active : bool = False
+        self.enabled : bool = False
+
+    def makeNewShape(self, shape : Shape) -> None:
+        if (self.enabled and not self.active):
+            dialog : NewShapeDialog = NewShapeDialog(shape)
+            dialog.exec()
+            dialog.configureShape()
+
+            if (dialog.result()):
+                self.shape = shape
+                self.scene.attach_object(self.shape)
+                self.active = True
+
+    def mousePressEvent(self, event : QMouseEvent) -> None:
+        if (self.enabled and self.active):
+            self.parent.setCursor(Qt.CursorShape.CrossCursor)
+            self.anchor_point = self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+            self.dragging = True
+
+    def mouseReleaseEvent(self, event : QMouseEvent) -> None:
+        if (self.enabled and self.active):
+            self.parent.setCursor(Qt.CursorShape.ArrowCursor)
+            self.dragging = False
+            self.active = False
+    
+    def mouseMoveEvent(self, event : QMouseEvent) -> None:
+        if (self.enabled and self.active):
+            if (self.dragging):
+                delta : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchor_point
+                self.shape.center = self.anchor_point + 0.5 * delta
+                self.shape.size = Utility.toQSizeF(delta)
+

@@ -11,9 +11,8 @@ from PySide6.QtWidgets import (
 )
 
 from Shapes import Rectangle, Ellipse, Star, Circle
-from Editor import EditorCanvas, EditorState
-
-from NewShapeDialog import NewShapeDialog
+from Editor.Canvas import Canvas, EditorState
+from Editor.Scene import exampleScene1, exampleScene2, exampleScene3
 #
 # window class
 #
@@ -28,7 +27,7 @@ class Window(QMainWindow):
         self.layout : QVBoxLayout = QVBoxLayout(self.frame)
         self.frame.setLayout(self.layout)
 
-        self.canvas : EditorCanvas = EditorCanvas(parent, QSize(1080, 720))
+        self.canvas : Canvas = Canvas(parent, QSize(1080, 720))
         self.layout.addWidget(self.canvas)
 
         self.menu_bar : QMenuBar = self.menuBar()
@@ -85,114 +84,41 @@ class Window(QMainWindow):
 
     def action_move(self, state : bool):
         if (state):
-            self.canvas.setState(EditorState.SCROLL_VIEWPORT)
+            self.canvas.setState(EditorState.SCROLL_CAMERA)
         else:
-            self.canvas.setState(EditorState.NONE)
+            self.canvas.setState(EditorState.NEW_AND_EDIT)
 
     def action_add_rect(self):
         self.move_mode_action.setChecked(False)
-
-        rect : Rectangle = Rectangle(QPointF(0.0, 0.0), QSizeF(0.0, 0.0))
-        dialog : NewShapeDialog = NewShapeDialog("Configure: new Rectangle", rect)
-        dialog.exec()
-
-        if (dialog.result() == True):
-            self.canvas.setState(EditorState.ADD_NEW_SHAPE, rect)
-            rect.fillColor = dialog.fillColor.getColor()
-            rect.outlineColor = dialog.outlineColor.getColor()
-            rect.outlineWidth = dialog.outlineWidth.spinbox.value()
+        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.newShape.makeNewShape(Rectangle(QPointF(0.0, 0.0), QSizeF(0.0, 0.0)))
 
     def action_add_ellipse(self):
         self.move_mode_action.setChecked(False)
-        
-        ell : Ellipse = Ellipse(QPointF(0.0, 0.0), QSizeF(0.0, 0.0))
-        dialog : NewShapeDialog = NewShapeDialog("Configure: new Ellipse", ell)
-        dialog.exec()
-
-        if (dialog.result() == True):
-            self.canvas.setState(EditorState.ADD_NEW_SHAPE, ell)
-            ell.fillColor = dialog.fillColor.getColor()
-            ell.outlineColor = dialog.outlineColor.getColor()
-            ell.outlineWidth = dialog.outlineWidth.spinbox.value()
+        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.newShape.makeNewShape(Ellipse(QPointF(0.0, 0.0), QSizeF(0.0, 0.0)))
 
     def action_add_circ(self):
         self.move_mode_action.setChecked(False)
-        
-        circ : Circle = Circle(QPointF(0.0, 0.0), 0.0)
-        dialog : NewShapeDialog = NewShapeDialog("Configure: new Circle", circ)
-        dialog.exec()
-
-        if (dialog.result() == True):
-            self.canvas.setState(EditorState.ADD_NEW_SHAPE, circ)
-            circ.fillColor = dialog.fillColor.getColor()
-            circ.outlineColor = dialog.outlineColor.getColor()
-            circ.outlineWidth = dialog.outlineWidth.spinbox.value()
+        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.newShape.makeNewShape(Circle(QPointF(0.0, 0.0), 0.0))
 
     def action_add_star(self):
         self.move_mode_action.setChecked(False)
-
-        star : Star = Star(QPointF(0.0, 0.0), QSizeF(0.0, 0.0), QSizeF(0.0, 0.0), 3)
-        dialog : NewShapeDialog = NewShapeDialog("Configure: new Star", star)
-        dialog.exec()
-
-        if (dialog.result() == True):
-            self.canvas.setState(EditorState.ADD_NEW_SHAPE, star)
-            star.fillColor = dialog.fillColor.getColor()
-            star.outlineColor = dialog.outlineColor.getColor()
-            star.outlineWidth = dialog.outlineWidth.spinbox.value()
-            star.numOuterVertices = dialog.numEdges.spinbox.value()
-            star.innerSize = QSizeF(dialog.innerRadius.spinbox.value(), dialog.innerRadius.spinbox.value())
+        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.newShape.makeNewShape(Star(QPointF(0.0, 0.0), QSizeF(0.0, 0.0), QSizeF(0.0, 0.0)))
 
     def action_example_1(self):
         self.canvas.clear()
-
-        rectangle_1 : Rectangle = Rectangle(QPointF(100.0, 100.0), QSizeF(100.0, 100.0))
-        rectangle_1.showFillBody = False
-        rectangle_1.outlineColor = QColor(0, 0, 255)
-        rectangle_1.outlineWidth = 2.0
-
-        circle_1 : Circle = Circle(QPointF(150.0, 150.0), 50.0)
-        circle_1.showFillBody = False
-        circle_1.outlineColor = QColor(255, 0, 0)
-        circle_1.outlineWidth = 2.0
-
-        self.canvas.scene.attach_objects([rectangle_1, circle_1])
+        exampleScene1(self.canvas.scene)
 
     def action_example_2(self):
         self.canvas.clear()
-
-        padding : float = 5.0
-        rectangles : list[Rectangle] = [Rectangle(QPointF(200.0 + padding, 100.0), QSizeF(100.0, 100.0)),
-                                        Rectangle(QPointF(300.0 + 2 * padding, 100.0), QSizeF(100.0, 100.0)),
-                                        Rectangle(QPointF(100.0, 200.0 + padding), QSizeF(100.0, 100.0)),
-                                        Rectangle(QPointF(200.0 + padding, 300.0 + 2 * padding), QSizeF(100.0, 100.0)),
-                                        Rectangle(QPointF(300.0 + 2 * padding, 300.0 + 2 * padding), QSizeF(100.0, 100.0)),
-                                        Rectangle(QPointF(400.0 + 3 * padding, 200.0 + padding), QSizeF(100.0, 100.0))]
-
-        circles : list[Circle] = [Circle(QPointF(150.0, 150.0), 50.0), 
-                                  Circle(QPointF(450.0 + 3 * padding, 150.0), 50.0), 
-                                  Circle(QPointF(450.0 + 3 * padding, 350.0 + 2 * padding), 50.0), 
-                                  Circle(QPointF(150.0, 350.0 + 2 * padding), 50.0)]
-
-        for rect in rectangles:
-            rect.fillColor = QColor(0, 0, 255)
-            rect.outlineColor = QColor(255, 0, 0)
-            rect.outlineWidth = 2.0
-
-        for circ in circles:
-            circ.fillColor = QColor(255, 0, 0)
-            circ.outlineColor = QColor(0, 0, 255)
-            circ.outlineWidth = 2.0
-
-        self.canvas.scene.attach_objects(rectangles)
-        self.canvas.scene.attach_objects(circles)
+        exampleScene2(self.canvas.scene)
 
     def action_example_3(self):
         self.canvas.clear()
-
-        star_1 : Star = Star(QPointF(150.0, 150.0), QSizeF(150.0, 150.0), QSizeF(100.0, 100.0), 12)
-
-        self.canvas.scene.attach_objects([star_1])
+        exampleScene3(self.canvas.scene)
     
     def closeEvent(self, event : QCloseEvent):
         if (QMessageBox.question(self, "Really close?", "Progress may be unsaved", QMessageBox.Yes, QMessageBox.No) == QMessageBox.Yes):

@@ -6,6 +6,8 @@ from PySide6.QtCore import QRectF, QSizeF, QPointF
 
 from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen, QBrush, QPolygonF
 
+from PySide6.QtCore import Qt
+
 from math import sin, cos, radians
 
 import Utility
@@ -39,6 +41,18 @@ class Shape:
         return self.boundingBox.topLeft()
 
     @property
+    def topRight(self) -> QPointF:
+        return self.boundingBox.topRight()
+    
+    @property
+    def bottomLeft(self) -> QPointF:
+        return self.boundingBox.bottomLeft()
+    
+    @property
+    def bottomRight(self) -> QPointF:
+        return self.boundingBox.bottomRight()
+
+    @property
     def size(self) -> QSizeF:
         return self.boundingBox.size()
     
@@ -50,6 +64,19 @@ class Shape:
     def topLeft(self, value : QPointF) -> None:
         self.boundingBox.setTopLeft(value)
 
+    @topRight.setter
+    def topRight(self, value : QPointF) -> None:
+        self.boundingBox.setTopRight(value)
+
+    @bottomLeft.setter
+    def bottomLeft(self, value : QPointF) -> None:
+        self.boundingBox.setBottomLeft(value)
+
+    @bottomRight.setter
+    def bottomRight(self, value : QPointF) -> None:
+        self.boundingBox.setBottomRight(value)
+
+
     @size.setter
     def size(self, value : QSizeF) -> None:
         self.boundingBox.setSize(value)
@@ -57,6 +84,12 @@ class Shape:
     @center.setter
     def center(self, value : QPointF) -> None:
         self.boundingBox.setTopLeft(value - 0.5 * Utility.toQPointF(self.boundingBox.size()))
+
+    def moveTopLeft(self, value : QPointF) -> None:
+        self.boundingBox.moveTopLeft(value)
+
+    def move(self, offset : QPointF) -> None:
+        self.boundingBox.translate(offset)
 
     def draw(self, painter : QPainter) -> None:
         if (self.showFillBody):
@@ -191,6 +224,21 @@ class Star(Shape):
         self.boundingBox.setTopLeft(value)
         self.__compute_vertices__()
 
+    @Shape.topRight.setter
+    def topRight(self, value : QPointF) -> None:
+        self.boundingBox.setTopRight(value)
+        self.__compute_vertices__()
+
+    @Shape.bottomLeft.setter
+    def bottomLeft(self, value : QPointF) -> None:
+        self.boundingBox.setBottomLeft(value)
+        self.__compute_vertices__()
+
+    @Shape.bottomRight.setter
+    def bottomRight(self, value : QPointF) -> None:
+        self.boundingBox.setBottomRight(value)
+        self.__compute_vertices__()
+
     @Shape.size.setter
     def size(self, value : QSizeF) -> None:
         self.boundingBox.setSize(value)
@@ -211,6 +259,13 @@ class Star(Shape):
         self.__num_outer_vertices__ = value
         self.__compute_vertices__()
 
+    def moveTopLeft(self, value : QPointF) -> None:
+        self.boundingBox.moveTopLeft(value)
+        self.__compute_vertices__()
+
+    def move(self, offset : QPointF) -> None:
+        self.boundingBox.translate(offset)
+        self.__compute_vertices__()
 
     def draw(self, painter : QPainter) -> None:
         self.__painterpath__.clear()
