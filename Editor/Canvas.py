@@ -46,6 +46,7 @@ class Canvas(QWidget):
         self.camera : Camera = Camera(self, dimensions)
         self.newShape : NewShape = NewShape(self, self.camera, self.scene)
         self.editShape : EditShape = EditShape(self, self.camera, self.scene)
+        self.setState(EditorState.NEW_AND_EDIT)
 
     def paintEvent(self, event : QPaintEvent) -> None:
         painter : QPainter = QPainter(self)
