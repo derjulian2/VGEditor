@@ -28,6 +28,22 @@ def toQVector2D(other : QPointF | QPoint | QSizeF | QSize) -> QVector2D:
         return QVector2D(float(other.width()), float(other.height()))
     else:
         raise TypeError("false type passed to QVector2DCast")
+    
+def invert2D(v : QPointF | QSizeF | QVector2D) -> QPointF | QSizeF | QVector2D:
+    if (isinstance(v, QPointF)):
+        return QPointF(1.0 / v.x(), 1.0 / v.y())
+    elif (isinstance(v, QVector2D)):
+        return QVector2D(1.0 / v.x(), 1.0 / v.y())
+    elif (isinstance(v, QSizeF)):
+        return QSizeF(1.0 / v.width(), 1.0 / v.height())
+    else:
+        raise TypeError("false type passed to invert2D")
+    
+def QSizeFDivide(a : QSizeF, b : QSizeF) -> QSizeF:
+    return QSizeF(a.width() / b.width(), a.height() / b.height())
+
+def QSizeFMultiply(a : QSizeF, b : QSizeF) -> QSizeF:
+    return QSizeF(a.width() * b.width(), a.height() * b.height())
 #
 # clamp a value to a given range
 #

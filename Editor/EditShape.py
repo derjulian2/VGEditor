@@ -1,16 +1,14 @@
 
-from PySide6.QtWidgets import (
-    QWidget,    QHBoxLayout,    QVBoxLayout, 
-    QLabel,     QSpinBox,       QDoubleSpinBox, 
-    QDialog,    QPushButton
-)
-
+from PySide6.QtWidgets import QWidget, QDialog
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen
 from PySide6.QtCore import QPointF, QSizeF, QRectF
+
 from Shapes import Shape
 from Editor.Scene import Scene 
 from Editor.Camera import Camera
+
 from enum import Enum
+
 import Utility
 #
 # edit-shape-dialog class
@@ -43,9 +41,11 @@ class TranslateArea:
 
     def mouseMoveEvent(self, event : QMouseEvent, shape : Shape) -> None:
         delta : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchorPoint
-        shape.moveTopLeft(self.shapeAnchorPoint)
-        shape.move(delta)
-
+        shape.moveTopLeft(self.shapeAnchorPoint) # move to anchor point
+        shape.move(delta) # move about delta
+#
+# enum to describe what corner a ScaleArea acts upon
+#
 class ScaleAreaMode(Enum):
     TOPLEFT = 1
     TOPRIGHT = 2

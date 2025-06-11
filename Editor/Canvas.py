@@ -1,5 +1,6 @@
 
-from Shapes import Shape
+from Shapes import Shape, Ellipse
+
 from enum import Enum
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import (
@@ -16,14 +17,15 @@ from Editor.Camera import Camera
 from Editor.Scene import Scene
 from Editor.NewShape import NewShape
 from Editor.EditShape import EditShape
+from Editor.GroupShapes import GroupShapes
 #
 # editorstate enum
 #
 # describes the user-interaction-state that the editor is in
 #
 class EditorState(Enum):
-    SCROLL_CAMERA = 1, # active when the user is moving around the scene
-    NEW_AND_EDIT  = 2  # active when the user is editing/adding shapes
+    SCROLL_CAMERA = 1,  # active when the user is moving around the scene
+    NEW_GROUP_EDIT  = 2,  # active when the user is editing/grouping/adding shapes
 #
 # canvas widget class
 #
@@ -39,14 +41,16 @@ class Canvas(QWidget):
 
         self.image : QImage = QImage(dimensions, QImage.Format_RGB32)
 
-        self.state : EditorState = EditorState.NEW_AND_EDIT
+        self.state : EditorState = EditorState.NEW_GROUP_EDIT
 
         # components of the editor-logic
         self.scene : Scene = Scene()
         self.camera : Camera = Camera(self, dimensions)
         self.newShape : NewShape = NewShape(self, self.camera, self.scene)
         self.editShape : EditShape = EditShape(self, self.camera, self.scene)
-        self.setState(EditorState.NEW_AND_EDIT)
+        self.groupShapes : GroupShapes = GroupShapes(self.editShape)
+
+        self.setState(EditorState.NEW_GROUP_EDIT)
 
     def paintEvent(self, event : QPaintEvent) -> None:
         painter : QPainter = QPainter(self)
@@ -54,7 +58,9 @@ class Canvas(QWidget):
         scene_painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         self.camera.updateTransform()
-        scene_painter.setTransform(self.camera.transform)    
+        scene_painter.setTransform(self.camera.transform)
+
+        self.scene.update()    
         self.scene.draw(scene_painter, self.image)
     
         self.editShape.draw(scene_painter)
@@ -66,30 +72,35 @@ class Canvas(QWidget):
 
     def setState(self, state : EditorState) -> None:
         self.state = state
-        if (self.state == EditorState.NEW_AND_EDIT):
+        if (self.state == EditorState.NEW_GROUP_EDIT):
             self.camera.enabled = False
             self.newShape.enabled = True
             self.editShape.enabled = True
+            self.groupShapes.enabled = True
         elif (self.state == EditorState.SCROLL_CAMERA):
             self.camera.enabled = True
             self.newShape.enabled = False
             self.editShape.enabled = False
+            self.groupShapes.enabled = False
 
     def mousePressEvent(self, event : QMouseEvent) -> None:
         self.camera.mousePressEvent(event)
         self.newShape.mousePressEvent(event)
         self.editShape.mousePressEvent(event)
+        self.groupShapes.mousePressEvent(event)
         self.update()
 
     def mouseReleaseEvent(self, event : QMouseEvent) -> None:
         self.camera.mouseReleaseEvent(event)
         self.newShape.mouseReleaseEvent(event)
         self.editShape.mouseReleaseEvent(event)
+        self.groupShapes.mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event : QMouseEvent) -> None:
         self.camera.mouseMoveEvent(event)
         self.newShape.mouseMoveEvent(event)
         self.editShape.mouseMoveEvent(event)
+        self.groupShapes.mouseMoveEvent(event)
         self.update()
 
     def wheelEvent(self, event : QWheelEvent) -> None:

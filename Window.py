@@ -86,26 +86,26 @@ class Window(QMainWindow):
         if (state):
             self.canvas.setState(EditorState.SCROLL_CAMERA)
         else:
-            self.canvas.setState(EditorState.NEW_AND_EDIT)
+            self.canvas.setState(EditorState.NEW_GROUP_EDIT)
 
     def action_add_rect(self):
         self.move_mode_action.setChecked(False)
-        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.setState(EditorState.NEW_GROUP_EDIT)
         self.canvas.newShape.makeNewShape(Rectangle(QPointF(0.0, 0.0), QSizeF(0.0, 0.0)))
 
     def action_add_ellipse(self):
         self.move_mode_action.setChecked(False)
-        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.setState(EditorState.NEW_GROUP_EDIT)
         self.canvas.newShape.makeNewShape(Ellipse(QPointF(0.0, 0.0), QSizeF(0.0, 0.0)))
 
     def action_add_circ(self):
         self.move_mode_action.setChecked(False)
-        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.setState(EditorState.NEW_GROUP_EDIT)
         self.canvas.newShape.makeNewShape(Circle(QPointF(0.0, 0.0), 0.0))
 
     def action_add_star(self):
         self.move_mode_action.setChecked(False)
-        self.canvas.setState(EditorState.NEW_AND_EDIT)
+        self.canvas.setState(EditorState.NEW_GROUP_EDIT)
         self.canvas.newShape.makeNewShape(Star(QPointF(0.0, 0.0), QSizeF(0.0, 0.0), QSizeF(0.0, 0.0)))
 
     def action_example_1(self):

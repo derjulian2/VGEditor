@@ -2,7 +2,7 @@
 from Shapes import Shape
 from PySide6.QtGui import QColor, QPainter, QImage
 from PySide6.QtCore import QPointF, QSizeF
-from Shapes import Rectangle, Ellipse, Circle, Star
+from Shapes import Rectangle, Ellipse, Circle, Star, AggregateShape
 
 #
 # scene class 
@@ -32,8 +32,15 @@ class Scene:
             if (self.attachedShapes[i] is shape):
                 self.attachedShapes.append(self.attachedShapes[i])
                 self.attachedShapes.pop(i)
-
-    # render the entire scene using the passed painter and view
+    #
+    # updates each shape in the scene, possibly performing vertex-recalculations
+    #
+    def update(self) -> None:
+        for shape in self.attachedShapes:
+            shape.update()
+    #
+    # render the entire scene using the passed painter onto the passed image
+    #
     def draw(self, painter : QPainter, image : QImage) -> None:
         image.fill(self.backgroundColor)
         for shape in self.attachedShapes:
@@ -90,5 +97,10 @@ def exampleScene2(scene : Scene) -> None:
 def exampleScene3(scene : Scene) -> None:
     scene.clear()
 
-    star_1 : Star = Star(QPointF(150.0, 150.0), QSizeF(150.0, 150.0), QSizeF(100.0, 100.0), 12)
-    scene.attach_objects([star_1])
+    star_1 : Star = Star(QPointF(150.0, 150.0), QSizeF(150.0, 150.0), 0.5 * QSizeF(150.0, 150.0), 5)
+    star_2 : Star = Star(QPointF(200.0, 200.0), QSizeF(150.0, 150.0), 0.5 * QSizeF(100.0, 100.0), 12)
+
+    circle_1 : Circle = Circle(QPointF(-50.0,50.0), 25.0)
+    ellipse_1 : Ellipse = Ellipse(QPointF(-50.0, 75.0), QSizeF(50.0, 25.0))
+
+    scene.attach_objects([ AggregateShape([star_1, star_2]), AggregateShape([ circle_1, ellipse_1 ]) ])
