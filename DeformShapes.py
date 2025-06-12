@@ -2,7 +2,7 @@
 from Shapes import Triangle
 from PySide6.QtCore import QRectF, QSizeF, QPointF
 from PySide6.QtWidgets import QDialog
-from math import sin, cos, pi
+from math import sin, cos, pi, radians, degrees
 #
 # deform-shapes-dialog class
 #
@@ -17,9 +17,9 @@ class DeformShapeDialog(QDialog):
 #
 def Subdivide(triangle : Triangle) -> list[Triangle]:
     # alias vertices
-    a_v : QPointF = triangle.Vertices[0]
-    b_v : QPointF = triangle.Vertices[1]
-    c_v : QPointF = triangle.Vertices[2]
+    a_v : QPointF = triangle.Vertices[0].__copy__()
+    b_v : QPointF = triangle.Vertices[1].__copy__()
+    c_v : QPointF = triangle.Vertices[2].__copy__()
     # determine centers of triangle sides
     center_ac : QPointF = a_v + 0.5 * (c_v - a_v)
     center_bc : QPointF = b_v + 0.5 * (c_v - b_v)
@@ -36,8 +36,9 @@ def Subdivide(triangle : Triangle) -> list[Triangle]:
 #
 def Deformation(triangles : list[Triangle], amplitude : float, width : float, offset : float) -> list[Triangle]:
     result : list[Triangle] = []
+    f = lambda y : amplitude * sin(radians(2 * pi * width * y + offset)) # why in radians?
     for triangle in triangles:
-        result.append(Triangle([ triangle.Vertices[0] + QPointF(0.0, amplitude * sin(2 * pi * width * triangle.Vertices[0] + offset)),
-                                 triangle.Vertices[1] + QPointF(0.0, amplitude * sin(2 * pi * width * triangle.Vertices[1] + offset)),
-                                 triangle.Vertices[2] + QPointF(0.0, amplitude * sin(2 * pi * width * triangle.Vertices[2] + offset)), ]))
+        result.append(Triangle([ QPointF(triangle.Vertex(0).x(), triangle.Vertex(0).y() + f(triangle.Vertex(0).x())),
+                                 QPointF(triangle.Vertex(1).x(), triangle.Vertex(1).y() + f(triangle.Vertex(1).x())),
+                                 QPointF(triangle.Vertex(2).x(), triangle.Vertex(2).y() + f(triangle.Vertex(2).x()))]))
     return result

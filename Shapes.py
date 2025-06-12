@@ -11,6 +11,7 @@ from PySide6.QtCore import Qt
 from math import sin, cos, radians, pi
 from copy import copy, deepcopy
 
+
 import enum
 
 import Utility
@@ -35,12 +36,31 @@ class Triangle:
             raise AttributeError("Triangle must have exactly 3 vertices")
         self.__vertices__ = value
 
+    def Vertex(self, index : int) -> QPointF:
+        if (index < 0 or index > 2):
+            raise AttributeError("triangle vertex index out of range")
+        return self.__vertices__[index]
+
+    def setVertex(self, index : int, value : QPointF) -> None:
+        if (index < 0 or index > 2):
+            raise AttributeError("triangle vertex index out of range")
+        self.__vertices__[index] = value
+
+    def move(self, offset : QPointF) -> None:
+        self.__vertices__ = [
+            self.__vertices__[0] + offset,
+            self.__vertices__[1] + offset,
+            self.__vertices__[2] + offset
+        ]
+
     def toQPolygonF(self) -> QPolygonF:
         res : QPolygonF = QPolygonF()
         res.append(self.Vertices[0])
         res.append(self.Vertices[1])
         res.append(self.Vertices[2])
         return res
+    
+from DeformShapes import Subdivide, Deformation
 #
 # base class for all other shapes
 #
@@ -166,6 +186,150 @@ class Shape:
         raise TypeError("describeShape() cannot be called on base shape class")
 
 #
+# determine the bounding box of a list of triangles (for coordinate systems with positive x and negative y)
+#
+def findBoundingBoxTriangles(triangles : list[Triangle]) -> QRectF:
+    topLeft : QPointF = triangles[0].Vertices[0].__copy__()
+    bottomRight : QPointF = triangles[0].Vertices[1].__copy__()
+    for triangle in triangles:
+        for vertex in triangle.Vertices:
+            if vertex.x() < topLeft.x():
+                topLeft.setX(vertex.x())
+            if (vertex.y() < topLeft.y()):
+                topLeft.setY(vertex.y())
+            if (vertex.x() > bottomRight.x()):
+                bottomRight.setX(vertex.x())
+            if (vertex.y() > bottomRight.y()):
+                bottomRight.setY(vertex.y())
+    return QRectF(topLeft, Utility.toQSizeF(bottomRight - topLeft))
+#
+# determine bounding box of a list of shapes (for coordinate systems with positive x and negative y)
+#
+def findBoundingBoxShapes(shapes : list[Shape]) -> QRectF:
+    topLeft : QPointF = shapes[0].topLeft.__copy__()
+    bottomRight : QPointF = shapes[0].bottomRight.__copy__()
+    for shape in shapes:
+        if shape.topLeft.x() < topLeft.x():
+            topLeft.setX(shape.topLeft.x())
+        if (shape.topLeft.y() < topLeft.y()):
+            topLeft.setY(shape.topLeft.y())
+        if (shape.bottomRight.x() > bottomRight.x()):
+            bottomRight.setX(shape.bottomRight.x())
+        if (shape.bottomRight.y() > bottomRight.y()):
+            bottomRight.setY(shape.bottomRight.y())
+    return QRectF(topLeft, Utility.toQSizeF(bottomRight - topLeft))
+#
+# generalization of a shape consisting of multiple triangles
+#
+# later useful for making up aggregate shapes and applying deformations (although resource-intensive)
+#
+class Polygon(Shape):
+    def __init__(self, triangles : list[Triangle]):
+        self.__triangles__ : list[Triangle] = triangles
+        super().__init__(findBoundingBoxTriangles(triangles))
+
+    def describeShape(self) -> list[Triangle]:
+        return self.__triangles__
+    
+    def update(self) -> None:
+        self.__painterpath__.clear()
+        for triangle in self.describeShape():
+            path : QPainterPath = QPainterPath()
+            path.addPolygon(triangle.toQPolygonF())
+            self.__painterpath__ = self.__painterpath__.united(path)
+        self.__painterpath__ = self.__painterpath__.simplified()
+
+    #
+    # specializes setters that update every point of every triangle
+    #
+
+    def __fit_polygon_to_boundingBox__(self, newBox : QRectF) -> None:
+        for triangle in self.__triangles__:
+            ratio_0 : QPointF = Utility.QPointFDivide(triangle.Vertex(0) - self.topLeft, Utility.toQPointF(self.size))
+            ratio_1 : QPointF = Utility.QPointFDivide(triangle.Vertex(1) - self.topLeft, Utility.toQPointF(self.size))
+            ratio_2 : QPointF = Utility.QPointFDivide(triangle.Vertex(2) - self.topLeft, Utility.toQPointF(self.size))
+            triangle.setVertex(0, newBox.topLeft() + Utility.QPointFMultiply(ratio_0, Utility.toQPointF(newBox.size())))
+            triangle.setVertex(1, newBox.topLeft() + Utility.QPointFMultiply(ratio_1, Utility.toQPointF(newBox.size())))
+            triangle.setVertex(2, newBox.topLeft() + Utility.QPointFMultiply(ratio_2, Utility.toQPointF(newBox.size())))
+
+    @Shape.topLeft.setter
+    def topLeft(self, value : QPointF) -> None:
+        newBox : QRectF = QRectF(self.boundingBox)
+        newBox.setTopLeft(value)
+        self.__fit_polygon_to_boundingBox__(newBox)
+        self.boundingBox.setTopLeft(value)
+
+
+    @Shape.topRight.setter
+    def topRight(self, value : QPointF) -> None:
+        newBox : QRectF = QRectF(self.boundingBox)
+        newBox.setTopRight(value)
+        self.__fit_polygon_to_boundingBox__(newBox)
+        self.boundingBox.setTopRight(value)
+
+
+    @Shape.bottomLeft.setter
+    def bottomLeft(self, value : QPointF) -> None:
+        newBox : QRectF = QRectF(self.boundingBox)
+        newBox.setBottomLeft(value)
+        self.__fit_polygon_to_boundingBox__(newBox)
+        self.boundingBox.setBottomLeft(value)
+
+
+    @Shape.bottomRight.setter
+    def bottomRight(self, value : QPointF) -> None:
+        newBox : QRectF = QRectF(self.boundingBox)
+        newBox.setBottomRight(value)
+        self.__fit_polygon_to_boundingBox__(newBox)
+        self.boundingBox.setBottomRight(value)
+
+
+    @Shape.size.setter
+    def size(self, value : QSizeF) -> None:
+        newBox : QRectF = QRectF(self.boundingBox)
+        newBox.setSize(value)
+        self.__fit_polygon_to_boundingBox__(newBox)
+        self.boundingBox.setSize(value)
+    
+
+    @Shape.center.setter
+    def center(self, value : QPointF) -> None:
+        newBox : QRectF = QRectF(self.boundingBox)
+        newBox.setTopLeft(value - 0.5 * Utility.toQPointF(self.boundingBox.size()))
+        self.__fit_polygon_to_boundingBox__(newBox)
+        self.boundingBox.setTopLeft(value - 0.5 * Utility.toQPointF(self.boundingBox.size()))
+
+    def moveTopLeft(self, value : QPointF) -> None:
+        for triangle in self.__triangles__:
+            triangle.setVertex(0, value + triangle.Vertex(0) - self.topLeft)
+            triangle.setVertex(1, value + triangle.Vertex(1) - self.topLeft)
+            triangle.setVertex(2, value + triangle.Vertex(2) - self.topLeft)
+        self.boundingBox.moveTopLeft(value)
+        
+
+    def move(self, offset : QPointF) -> None:
+        for triangle in self.__triangles__:
+            triangle.move(offset)
+        self.boundingBox.translate(offset)
+
+    def DeformAlongCurve(self, amplitude : float, width : float, offset : float) -> None:
+        self.__deformed__ = True
+        self.__triangles__ = Deformation(self.__triangles__, amplitude, width, offset)
+        self.boundingBox = findBoundingBoxTriangles(self.__triangles__)
+
+
+    def SubdivideTriangles(self, n : int) -> None:
+        res : list[Triangle] = self.__triangles__.copy()
+
+        for i in range(0, n):
+            iteration : list[Triangle] = []
+            for triangle in res:
+                iteration.extend(Subdivide(triangle))
+            res = iteration
+        
+        self.__triangles__ = res
+
+#
 # rectangle shape
 #
 # defined by position and size (basically just a filled boundingBox)
@@ -198,7 +362,7 @@ class Ellipse(Shape):
     # determines the number of triangles that the ellipse will be split up into
     # when rendering (Ellipse shape will  be approximated)
     #
-    Accuracy : int = 16
+    Accuracy : int = 32
 
     def __init__(self, center : QPointF, radii : QSizeF) -> None:
         super().__init__(QRectF(center.x() - radii.width(), 
@@ -347,51 +511,8 @@ class Star(Shape):
 #
 class AggregateShape(Shape):
     def __init__(self, shapes : list[Shape]) -> None:
-
         self.__shapes__ : list[Shape] = shapes
-        super().__init__(QRectF(self.__shapes__[0].topLeft, self.__shapes__[0].size))
-        self.__update_boundingBox__()
-
-    def __find_topLeft__(self) -> QPointF:
-        res : QPointF = self.__shapes__[0].topLeft
-        for shape in self.__shapes__:
-            if (shape.topLeft.x() < res.x()):
-                res.setX(shape.topLeft.x())
-            if (shape.topLeft.y() < res.y()):
-                res.setY(shape.topLeft.y())
-        return res
-    
-    def __find_bottomLeft__(self) -> QPointF:
-        res : QPointF = self.__shapes__[0].bottomLeft
-        for shape in self.__shapes__:
-            if (shape.bottomLeft_.x() < res.x()):
-                res.setX(shape.bottomLeft_.x())
-            if (shape.bottomLeft_.y() > res.y()):
-                res.setY(shape.bottomLeft_.y())
-        return res
-
-    def __find_topRight__(self) -> QPointF:
-        res : QPointF = self.__shapes__[0].topRight
-        for shape in self.__shapes__:
-            if (shape.topRight.x() < res.x()):
-                res.setX(shape.topRight.x())
-            if (shape.topRight.y() > res.y()):
-                res.setY(shape.topRight.y())
-        return res
-    
-    def __find_bottomRight__(self) -> QPointF:
-        res : QPointF = self.__shapes__[0].bottomRight
-        for shape in self.__shapes__:
-            if (shape.bottomRight.x() > res.x()):
-                res.setX(shape.bottomRight.x())
-            if (shape.bottomRight.y() > res.y()):
-                res.setY(shape.bottomRight.y())
-        return res
-    
-    def __update_boundingBox__(self) -> None:
-        self.boundingBox.setTopLeft(self.__find_topLeft__())
-        bottomRight : QPointF = self.__find_bottomRight__()
-        self.boundingBox.setSize(Utility.toQSizeF(bottomRight - self.topLeft))
+        super().__init__(findBoundingBoxShapes(self.__shapes__))
 
     def update(self) -> None:
         self.__painterpath__.clear()
@@ -405,6 +526,11 @@ class AggregateShape(Shape):
         for shape in self.__shapes__:
             res.extend(shape.describeShape())
         return res
+
+    def __fit_subshapes_to_boundingBox__(self, newBox : QRectF) -> None:
+        for shape in self.__shapes__:
+            pass
+        pass
 
     #
     # override setters to also apply all operations
@@ -421,7 +547,7 @@ class AggregateShape(Shape):
     @Shape.topRight.setter
     def topRight(self, value : QPointF) -> None:
         for shape in self.__shapes__:
-            delta : QPointF = shape.topRight- self.topRight
+            delta : QPointF = shape.topRight - self.topRight
             shape.topRight= value + delta
         self.boundingBox.setTopRight(value)
 
@@ -445,7 +571,6 @@ class AggregateShape(Shape):
         # a subshape covering 50% of the area before scaling
         # should still cover as much area after scaling
         # before: shape.size / self.size should equals after: shape.size / self.size
-        print(value)
         for shape in self.__shapes__:
             ratio : QSizeF = Utility.QSizeFDivide(shape.size, self.size)
             shape.size = Utility.QSizeFMultiply(ratio, value)
