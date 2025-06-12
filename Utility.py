@@ -40,16 +40,12 @@ def invert2D(v : QPointF | QSizeF | QVector2D) -> QPointF | QSizeF | QVector2D:
         raise TypeError("false type passed to invert2D")
     
 def QSizeFDivide(a : QSizeF, b : QSizeF) -> QSizeF:
-    if (b.width() == 0 or b.height() == 0):
-        return QSizeF(a.width() / 0.0001, a.height() / 0.0001)
     return QSizeF(a.width() / b.width(), a.height() / b.height())
 
 def QSizeFMultiply(a : QSizeF, b : QSizeF) -> QSizeF:
     return QSizeF(a.width() * b.width(), a.height() * b.height())
 
 def QPointFDivide(a : QPointF, b : QPointF) -> QPointF:
-    if (b.x() == 0 or b.y() == 0):
-        return QPointF(a.x() / 0.0001, a.x() / 0.0001)
     return QPointF(a.x() / b.x(), a.y() / b.y())
 
 def QPointFMultiply(a : QPointF, b : QPointF) -> QPointF:

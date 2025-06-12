@@ -104,10 +104,14 @@ def exampleScene3(scene : Scene) -> None:
     ellipse_1 : Ellipse = Ellipse(QPointF(-50.0, 75.0), QSizeF(50.0, 25.0))
 
     #scene.attach_objects([ AggregateShape([star_1, star_2]), AggregateShape([ circle_1, ellipse_1 ]) ])
-    rect_1 : Rectangle = Rectangle(QPointF(10.0, 10.0), QSizeF(100.0, 100.0))
-    poly_1 : Polygon = Polygon(circle_1.describeShape())
+    rect_1 : Rectangle = Rectangle(QPointF(50.0, 50.0), QSizeF(100.0, 100.0))
+    poly_1 : Polygon = Polygon(rect_1.describeShape())
 
     scene.attach_object(poly_1)
 
+    poly_1.move(QPointF(50.0, 0.0))
+    poly_1.topLeft = QPointF(50.0, 50.0)
+
     poly_1.SubdivideTriangles(3)
-    poly_1.DeformAlongCurve(20.0, 0.1, 10.0)
+    poly_1.DeformAlongCurve(20.0, 0.5, 20.0)
+

@@ -221,29 +221,55 @@ def findBoundingBoxShapes(shapes : list[Shape]) -> QRectF:
 #
 # generalization of a shape consisting of multiple triangles
 #
-# later useful for making up aggregate shapes and applying deformations (although resource-intensive)
-#
 class Polygon(Shape):
     def __init__(self, triangles : list[Triangle]):
         self.__triangles__ : list[Triangle] = triangles
-        super().__init__(findBoundingBoxTriangles(triangles))
+        self.__polygon__ : QPolygonF = QPolygonF()
+        self.__batch_triangles_to_polygon__()
+        super().__init__(self.__polygon__.boundingRect())
 
     def describeShape(self) -> list[Triangle]:
+        self.__update_triangles__()
         return self.__triangles__
     
     def update(self) -> None:
         self.__painterpath__.clear()
-        for triangle in self.describeShape():
-            path : QPainterPath = QPainterPath()
-            path.addPolygon(triangle.toQPolygonF())
-            self.__painterpath__ = self.__painterpath__.united(path)
+        self.__painterpath__.addPolygon(self.__polygon__)
         self.__painterpath__ = self.__painterpath__.simplified()
 
     #
-    # specializes setters that update every point of every triangle
+    # this implementation batches together the triangles into a QPolygonF and
+    # only recalculates current triangle data if needed for performance in rendering
+    #
+    # NOTE: for the calculations a few divisions by sizes are needed. these are 
+    # fatal for divisions by zero currently, transforming a polygon is quite experimental right now
     #
 
+    def __update_triangles__(self) -> None:
+        self.__fit_triangles_to_boundingBox__(self.boundingBox)
+
+    def __batch_triangles_to_polygon__(self) -> None:
+        path_1 : QPainterPath = QPainterPath()
+        for triangle in self.__triangles__:
+            path_2 : QPainterPath = QPainterPath()
+            path_2.addPolygon(triangle.toQPolygonF())
+            path_1 = path_1.united(path_2)
+        self.__polygon__ = path_1.toFillPolygon(QTransform())
+
     def __fit_polygon_to_boundingBox__(self, newBox : QRectF) -> None:
+        delta_scale : QSizeF = Utility.QSizeFDivide(newBox.size(), self.size)
+
+        # transform polygon so its center becomes the origin, scale, and then translate back
+        offset : QPointF = self.center
+        self.__polygon__.translate(-offset)
+        transform : QTransform = QTransform.fromScale(delta_scale.width(), delta_scale.height())
+        self.__polygon__ = transform.map(self.__polygon__)
+        self.__polygon__.translate(offset)
+        delta_pos : QPointF = newBox.topLeft() - self.__polygon__.boundingRect().topLeft()
+        self.__polygon__.translate(delta_pos)
+        
+
+    def __fit_triangles_to_boundingBox__(self, newBox : QRectF) -> None:
         for triangle in self.__triangles__:
             ratio_0 : QPointF = Utility.QPointFDivide(triangle.Vertex(0) - self.topLeft, Utility.toQPointF(self.size))
             ratio_1 : QPointF = Utility.QPointFDivide(triangle.Vertex(1) - self.topLeft, Utility.toQPointF(self.size))
@@ -251,6 +277,10 @@ class Polygon(Shape):
             triangle.setVertex(0, newBox.topLeft() + Utility.QPointFMultiply(ratio_0, Utility.toQPointF(newBox.size())))
             triangle.setVertex(1, newBox.topLeft() + Utility.QPointFMultiply(ratio_1, Utility.toQPointF(newBox.size())))
             triangle.setVertex(2, newBox.topLeft() + Utility.QPointFMultiply(ratio_2, Utility.toQPointF(newBox.size())))
+
+    #
+    # specializes setters that update every point of every triangle
+    #
 
     @Shape.topLeft.setter
     def topLeft(self, value : QPointF) -> None:
@@ -300,25 +330,37 @@ class Polygon(Shape):
         self.boundingBox.setTopLeft(value - 0.5 * Utility.toQPointF(self.boundingBox.size()))
 
     def moveTopLeft(self, value : QPointF) -> None:
-        for triangle in self.__triangles__:
-            triangle.setVertex(0, value + triangle.Vertex(0) - self.topLeft)
-            triangle.setVertex(1, value + triangle.Vertex(1) - self.topLeft)
-            triangle.setVertex(2, value + triangle.Vertex(2) - self.topLeft)
+        offset : QPointF = value - self.topLeft
+        transform : QTransform = QTransform.fromTranslate(offset.x(), offset.y())
+        self.__polygon__ = transform.map(self.__polygon__)
         self.boundingBox.moveTopLeft(value)
+
         
 
     def move(self, offset : QPointF) -> None:
-        for triangle in self.__triangles__:
-            triangle.move(offset)
+        transform : QTransform = QTransform.fromTranslate(offset.x(), offset.y())
+        self.__polygon__ = transform.map(self.__polygon__)
         self.boundingBox.translate(offset)
+
+    #
+    # interfaces for deformations
+    #
+    # these operations are only available for Polygon-Shapes as only them consist of
+    # an underlying triangle-array
+    #
+    # however all shapes can be turned into a triangle-array, therefore also into polygons
+    #
 
     def DeformAlongCurve(self, amplitude : float, width : float, offset : float) -> None:
         self.__deformed__ = True
+        self.__update_triangles__()
         self.__triangles__ = Deformation(self.__triangles__, amplitude, width, offset)
-        self.boundingBox = findBoundingBoxTriangles(self.__triangles__)
+        self.__batch_triangles_to_polygon__()
+        self.boundingBox = self.__polygon__.boundingRect()
 
 
     def SubdivideTriangles(self, n : int) -> None:
+        self.__update_triangles__()
         res : list[Triangle] = self.__triangles__.copy()
 
         for i in range(0, n):
@@ -507,7 +549,8 @@ class Star(Shape):
 #
 # aggregate shape class
 #
-# defines a shape that was created via merging the vertex-data of multiple other shapes
+# essentially groups together shapes into a list and performs all actions performed on it on all of its subshapes
+# NOTE: needs rework
 #
 class AggregateShape(Shape):
     def __init__(self, shapes : list[Shape]) -> None:
