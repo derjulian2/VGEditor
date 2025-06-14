@@ -1,6 +1,4 @@
 
-from Shapes import Shape, Ellipse
-
 from enum import Enum
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import (

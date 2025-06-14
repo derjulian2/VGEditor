@@ -1,8 +1,10 @@
 
-from Shapes import Shape
-from PySide6.QtGui import QColor, QPainter, QImage
+
+from PySide6.QtGui import QColor, QPainter, QImage, QPolygonF
 from PySide6.QtCore import QPointF, QSizeF
-from Shapes import Rectangle, Ellipse, Circle, Star, AggregateShape, Polygon, Triangle
+from Editor.Shapes.Shape import Shape
+from Editor.Shapes.Primitives import Rectangle, Ellipse, Circle, Star, Polygon, Triangle
+from Editor.Shapes.DeformShapes import MultiSubdividePolygon, DeformPolygon
 
 #
 # scene class 
@@ -53,14 +55,14 @@ def exampleScene1(scene : Scene) -> None:
     scene.clear()
 
     rectangle_1 : Rectangle = Rectangle(QPointF(100.0, 100.0), QSizeF(100.0, 100.0))
-    rectangle_1.showFillBody = False
-    rectangle_1.outlineColor = QColor(0, 0, 255)
-    rectangle_1.outlineWidth = 2.0
+    rectangle_1.__show_fill_body__ = False
+    rectangle_1.__outline_color__ = QColor(0, 0, 255)
+    rectangle_1.__outline_width__ = 2.0
 
     circle_1 : Circle = Circle(QPointF(150.0, 150.0), 50.0)
-    circle_1.showFillBody = False
-    circle_1.outlineColor = QColor(255, 0, 0)
-    circle_1.outlineWidth = 2.0
+    circle_1.__show_fill_body__ = False
+    circle_1.__outline_color__ = QColor(255, 0, 0)
+    circle_1.__outline_width__ = 2.0
 
     scene.attach_objects([rectangle_1, circle_1])
 
@@ -81,14 +83,14 @@ def exampleScene2(scene : Scene) -> None:
                                 Circle(QPointF(150.0, 350.0 + 2 * padding), 50.0)]
 
     for rect in rectangles:
-        rect.fillColor = QColor(0, 0, 255)
-        rect.outlineColor = QColor(255, 0, 0)
-        rect.outlineWidth = 2.0
+        rect.__fill_color__ = QColor(0, 0, 255)
+        rect.__outline_color__ = QColor(255, 0, 0)
+        rect.__outline_width__ = 2.0
 
     for circ in circles:
-        circ.fillColor = QColor(255, 0, 0)
-        circ.outlineColor = QColor(0, 0, 255)
-        circ.outlineWidth = 2.0
+        circ.__fill_color__ = QColor(255, 0, 0)
+        circ.__outline_color__ = QColor(0, 0, 255)
+        circ.__outline_width__ = 2.0
 
     scene.attach_objects(rectangles)
     scene.attach_objects(circles)
@@ -98,20 +100,15 @@ def exampleScene3(scene : Scene) -> None:
     scene.clear()
 
     star_1 : Star = Star(QPointF(150.0, 150.0), QSizeF(150.0, 150.0), 0.5 * QSizeF(150.0, 150.0), 5)
-    #star_2 : Star = Star(QPointF(200.0, 200.0), QSizeF(150.0, 150.0), 0.5 * QSizeF(100.0, 100.0), 12)
+    star_1.update()
 
-    circle_1 : Circle = Circle(QPointF(-50.0,50.0), 25.0)
-    ellipse_1 : Ellipse = Ellipse(QPointF(-50.0, 75.0), QSizeF(50.0, 25.0))
-
-    #scene.attach_objects([ AggregateShape([star_1, star_2]), AggregateShape([ circle_1, ellipse_1 ]) ])
     rect_1 : Rectangle = Rectangle(QPointF(50.0, 50.0), QSizeF(100.0, 100.0))
-    poly_1 : Polygon = Polygon(rect_1.describeShape())
+    rect_1.update()
+
+    star_deformed : QPolygonF = DeformPolygon(MultiSubdividePolygon(star_1.describeShape(), 3), 10, 0.5, 0.0)
+    rect_deformed : QPolygonF = DeformPolygon(MultiSubdividePolygon(rect_1.describeShape(), 3), 10, 0.5, 0.0)
+
+    poly_1 : Polygon = Polygon(rect_deformed.toList())
 
     scene.attach_object(poly_1)
-
-    poly_1.move(QPointF(50.0, 0.0))
-    poly_1.topLeft = QPointF(50.0, 50.0)
-
-    poly_1.SubdivideTriangles(3)
-    poly_1.DeformAlongCurve(20.0, 0.5, 20.0)
 

@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QWidget, QDialog
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen
 from PySide6.QtCore import QPointF, QSizeF, QRectF
 
-from Shapes import Shape
+from Editor.Shapes.Shape import Shape
 from Editor.Scene import Scene 
 from Editor.Camera import Camera
 from Editor.EditShape import EditShape

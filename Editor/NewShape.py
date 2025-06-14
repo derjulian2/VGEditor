@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QPointF, QSizeF
 from PySide6.QtGui import QColor, QPainter, QMouseEvent
 from PySide6.QtCore import Qt
-from Shapes import Shape, Rectangle, Ellipse, Circle, Star
+from Editor.Shapes.Primitives import Shape, Rectangle, Ellipse, Circle, Star
 from Editor.Camera import Camera
 from Editor.Scene import Scene
 import Utility
@@ -126,12 +126,12 @@ class NewShapeDialog(QDialog):
 
     def configureShape(self) -> None:
         if (self.result()):
-            self.shape.fillColor = self.fillColor.getColor()
-            self.shape.outlineColor = self.outlineColor.getColor()
-            self.shape.outlineWidth = self.outlineWidth.spinbox.value()
+            self.shape.__fill_color__ = self.fillColor.getColor()
+            self.shape.__outline_color__ = self.outlineColor.getColor()
+            self.shape.__outline_width__ = self.outlineWidth.spinbox.value()
             if (isinstance(self.shape, Star)):
-                self.shape.numOuterVertices = self.numEdges.spinbox.value()
-                self.shape.innerSize = QSizeF(self.innerRadius.spinbox.value(), self.innerRadius.spinbox.value())
+                self.shape.SpikeNum = self.numEdges.spinbox.value()
+                self.shape.InnerSize = QSizeF(self.innerRadius.spinbox.value(), self.innerRadius.spinbox.value())
 
 #
 # editor-new-shape class

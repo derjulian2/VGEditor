@@ -1,6 +1,7 @@
 
-from Shapes import Triangle
+from Editor.Shapes.Primitives import Triangle
 from PySide6.QtCore import QRectF, QSizeF, QPointF
+from PySide6.QtGui import QPolygonF
 from PySide6.QtWidgets import QDialog
 from math import sin, cos, pi, radians, degrees
 #
@@ -15,7 +16,7 @@ class DeformShapeDialog(QDialog):
 #
 # subdivides a triangle into four smaller triangles along the center points at the sides
 #
-def Subdivide(triangle : Triangle) -> list[Triangle]:
+def SubdivideTriangle(triangle : Triangle) -> list[Triangle]:
     # alias vertices
     a_v : QPointF = triangle.Vertices[0].__copy__()
     b_v : QPointF = triangle.Vertices[1].__copy__()
@@ -34,7 +35,7 @@ def Subdivide(triangle : Triangle) -> list[Triangle]:
 #
 # f(x) = a * sin(2pi * w * x + o) is essentially added to each point of every triangle in 'triangles'
 #
-def Deformation(triangles : list[Triangle], amplitude : float, width : float, offset : float) -> list[Triangle]:
+def DeformTriangles(triangles : list[Triangle], amplitude : float, width : float, offset : float) -> list[Triangle]:
     result : list[Triangle] = []
     f = lambda y : amplitude * sin(radians(2 * pi * width * y + offset)) # why in radians?
     for triangle in triangles:
@@ -42,3 +43,29 @@ def Deformation(triangles : list[Triangle], amplitude : float, width : float, of
                                  QPointF(triangle.Vertex(1).x(), triangle.Vertex(1).y() + f(triangle.Vertex(1).x())),
                                  QPointF(triangle.Vertex(2).x(), triangle.Vertex(2).y() + f(triangle.Vertex(2).x()))]))
     return result
+#
+# subdivides a polygon into more vertices to get more detail in deformations
+#
+def SubdividePolygon(poly : QPolygonF) -> QPolygonF:
+    result : list[QPointF] = []
+    poly_list : list[QPointF] = poly.toList()
+    for index in range(0, len(poly_list)):
+        result.append(poly_list[index])
+        result.append(poly_list[index] + 0.5 * (poly_list[(index + 1 if index < len(poly_list) - 1 else 0)] - poly_list[index]))
+    return QPolygonF(result)
+
+def MultiSubdividePolygon(poly : QPolygonF, times : int) -> QPolygonF:
+    result : QPolygonF = poly.__copy__()
+    for n in range(0, times):
+        iteration : QPolygonF = SubdividePolygon(result)
+        result = iteration
+    return result 
+#
+# deforms a polygon along a sine wave
+#
+def DeformPolygon(poly : QPolygonF, amplitude : float, width : float, offset : float) -> QPolygonF:
+    result : list[QPointF] = []
+    f = lambda y : amplitude * sin(radians(2 * pi * width * y + offset)) # why in radians?
+    for point in poly.toList():
+        result.append(QPointF(point.x(), point.y() + f(point.x())))
+    return QPolygonF(result)

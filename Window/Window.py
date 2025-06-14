@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QMainWindow,    QMessageBox,    QMenu,
 )
 
-from Shapes import Rectangle, Ellipse, Star, Circle
+from Editor.Shapes.Primitives import Rectangle, Ellipse, Star, Circle
 from Editor.Canvas import Canvas, EditorState
 from Editor.Scene import exampleScene1, exampleScene2, exampleScene3
 #
@@ -106,7 +106,7 @@ class Window(QMainWindow):
     def action_add_star(self):
         self.move_mode_action.setChecked(False)
         self.canvas.setState(EditorState.NEW_GROUP_EDIT)
-        self.canvas.newShape.makeNewShape(Star(QPointF(0.0, 0.0), QSizeF(0.0, 0.0), QSizeF(0.0, 0.0)))
+        self.canvas.newShape.makeNewShape(Star(QPointF(0.0, 0.0), QSizeF(0.0, 0.0), QSizeF(0.0, 0.0), 3))
 
     def action_example_1(self):
         self.canvas.clear()

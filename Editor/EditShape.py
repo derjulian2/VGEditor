@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QWidget, QDialog
 from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen
 from PySide6.QtCore import QPointF, QSizeF, QRectF
 
-from Shapes import Shape
+from Editor.Shapes.Shape import Shape
 from Editor.Scene import Scene 
 from Editor.Camera import Camera
 
@@ -41,8 +41,8 @@ class TranslateArea:
 
     def mouseMoveEvent(self, event : QMouseEvent, shape : Shape) -> None:
         delta : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchorPoint
-        shape.moveTopLeft(self.shapeAnchorPoint) # move to anchor point
-        shape.move(delta) # move about delta
+        shape.moveTo(self.shapeAnchorPoint) # move to anchor point
+        shape.translate(delta) # move about delta
 #
 # enum to describe what corner a ScaleArea acts upon
 #
@@ -144,14 +144,14 @@ class EditShape:
                 clickedShape : Shape | None = self.__find_clicked_shape__(mouseClickPoint)
                 self.shape = clickedShape
                 if not (self.shape is None):
-                    self.shape.showBoundingBox = True
+                    self.shape.__show_bounding_box__ = True
                     self.active = True
                     self.scene.moveToFront(self.shape)
                     self.__update_edit_areas__()
             else:
                 if not (Utility.PointInRect(mouseClickPoint, self.shape.boundingBox)):
                     self.active = False
-                    self.shape.showBoundingBox = False
+                    self.shape.__show_bounding_box__ = False
                     self.shape = None
                 else:
                     self.translateArea.mousePressEvent(event, self.shape)
