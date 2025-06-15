@@ -4,6 +4,7 @@ from PySide6.QtGui import QColor, QPainter, QImage, QPolygonF
 from PySide6.QtCore import QPointF, QSizeF
 from Editor.Shapes.Shape import Shape
 from Editor.Shapes.Primitives import Rectangle, Ellipse, Circle, Star, Polygon, Triangle
+from Editor.Shapes.Aggregate import AggregateShape
 from Editor.Shapes.DeformShapes import MultiSubdividePolygon, DeformPolygon
 
 #
@@ -95,20 +96,38 @@ def exampleScene2(scene : Scene) -> None:
     scene.attach_objects(rectangles)
     scene.attach_objects(circles)
 
-
+#
+# example scene 2, but all shapes are converted to polygons, subdivided and deformed
+#
 def exampleScene3(scene : Scene) -> None:
     scene.clear()
+    example_scene_2 : Scene = Scene()
+    exampleScene2(example_scene_2)
+    
+    for shape in example_scene_2.attachedShapes:
+        shape.update()
 
-    star_1 : Star = Star(QPointF(150.0, 150.0), QSizeF(150.0, 150.0), 0.5 * QSizeF(150.0, 150.0), 5)
-    star_1.update()
+        polygon : QPolygonF = shape.describeShape()
+        polygon_subdivided : QPolygonF = MultiSubdividePolygon(polygon, 2)
+        polygon_deformed : QPolygonF = DeformPolygon(polygon_subdivided, 20.0, 0.2, 0.0)
+        polygon_shape : Polygon = Polygon(polygon_deformed.toList())
 
-    rect_1 : Rectangle = Rectangle(QPointF(50.0, 50.0), QSizeF(100.0, 100.0))
-    rect_1.update()
+        polygon_shape.__fill_color__ = shape.__fill_color__
+        polygon_shape.__outline_color__ = shape.__outline_color__
+        polygon_shape.__outline_width__ = shape.__outline_width__
 
-    star_deformed : QPolygonF = DeformPolygon(MultiSubdividePolygon(star_1.describeShape(), 3), 10, 0.5, 0.0)
-    rect_deformed : QPolygonF = DeformPolygon(MultiSubdividePolygon(rect_1.describeShape(), 3), 10, 0.5, 0.0)
+        scene.attach_object(polygon_shape)
 
-    poly_1 : Polygon = Polygon(rect_deformed.toList())
+import os
 
-    scene.attach_object(poly_1)
-
+#
+# export a scene to an XML-SVG-file
+#
+def exportSceneToSVG(scene : Scene, file : os.path) -> None:
+    pass
+#
+# import a scene / a set of shapes using an XML-SVG-file (only supported shapes will be parsed)
+# parameter 'scene' will be mutated (rather than return-value bc Canvas-Scene-object should not change)
+#
+def importShapesFromSVG(scene : Scene, file : os.path) -> None:
+    pass

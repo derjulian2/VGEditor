@@ -34,17 +34,15 @@ class Polygon(Shape):
     def describeShape(self) -> QPolygonF:
         return self.__polygon__
 
+    #
+    # method to fit the polygon-data into the bounding-box
+    #
     # scale polygon down to sidelengths of x = 1 and y = 1
     # then every vertex can be interpreted as a ratio in the bounding-box
     # a be safely scaled up to the new size
     # after that, just translate correctly
     #
     # this can be simplified to directly scaling from old-size to new-size
-    #
-    # also account for possibly mirroring where topLeft doesnt visually mean topLeft anymore
-    # to accomplish this, there have to be correct negative values during scaling
-    #
-    # currently transformations don't mirror, they just translate correctly
     #
     def __fit_polygon_to_bounding_box__(self) -> None:
 
@@ -53,7 +51,7 @@ class Polygon(Shape):
         old_center : QPointF  = self.__polygon__.boundingRect().center()
 
         # set size artificially here, or else division by zero occurs
-        # should be barely noticeable
+        # effect should be barely noticeable
         if (old_size.width() == 0):
             old_size.setWidth(0.01)
         if (old_size.height() == 0):
@@ -65,6 +63,7 @@ class Polygon(Shape):
         if (delta_scale.width() == 0 or delta_scale.height() == 0):
             return # return here, because scaling would lose all data by multiplying with 0
 
+        # now apply all transformations
         scale_transform : QTransform = QTransform.fromScale(delta_scale.width(), delta_scale.height())
         # for scaling to apply correctly polygon's center is moved to origin, then scaled, then translated back
         self.__polygon__.translate(-old_center)
