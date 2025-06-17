@@ -5,6 +5,8 @@ from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen, QBrush, QPolygon
 
 from PySide6.QtCore import Qt
 
+import xml.etree.ElementTree as XMLTree
+
 import Utility
 #
 # base class for all other shapes
@@ -49,6 +51,20 @@ class Shape:
     #
     def describeShape(self) -> QPolygonF:
         raise TypeError("cannot call describeShape() on base class")
+    #
+    # every shape implementation should be able to identify itself in an svg-compliant format
+    #
+    def toSVG(self) -> XMLTree.Element:
+        raise TypeError("cannot call toSVG() on base class")
+
+    def __make_SVG_style__(self) -> str:
+        attributes : list[str] = []
+        if self.__show_fill_body__:
+            attributes.append(f"fill:rgb({self.__fill_color__.red()},{self.__fill_color__.green()},{self.__fill_color__.blue()})")
+        if (self.__outline_width__ > 0.0):
+            attributes.append(f"stroke-width:{self.__outline_width__}")
+            attributes.append(f"stroke:rgb({self.__outline_color__.red()},{self.__outline_color__.green()},{self.__outline_color__.blue()})")
+        return ';'.join(attributes)
 
     #
     # mutable properties that every shape should take into account when implementing update()

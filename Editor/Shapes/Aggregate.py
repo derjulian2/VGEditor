@@ -4,6 +4,8 @@ from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen, QBrush, QPolygon
 
 from PySide6.QtCore import Qt
 
+import xml.etree.ElementTree as XMLTree
+
 import Utility
 from Editor.Shapes.Shape import Shape, findBoundingBoxShapes
 
@@ -38,6 +40,12 @@ class AggregateShape(Shape):
             res = res.united(__shape__[0].describeShape())
         return res
     
+    def toSVG(self) -> XMLTree.Element:
+        res : XMLTree.Element = XMLTree.Element("g")
+        for __shape__ in self.__shapes__:
+            res.append(__shape__[0].toSVG()) # potentially recursive call to another Aggregate, but should be allowed hence the tree structure
+        return res
+
     def __calc_ratios__(self, shapes : list[Shape]) -> None:
         for shape in shapes:
             if (self.size.width() == 0):

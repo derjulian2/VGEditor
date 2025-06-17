@@ -6,6 +6,8 @@ from PySide6.QtCore import Qt
 
 from math import sin, cos, radians, pi
 
+import xml.etree.ElementTree as XMLTree
+
 import Utility
 from Editor.Shapes.Shape import Shape
 #
@@ -34,6 +36,12 @@ class Polygon(Shape):
     def describeShape(self) -> QPolygonF:
         return self.__polygon__
 
+    def toSVG(self) -> XMLTree.Element:
+        points : str = ""
+        for point in self.__polygon__.toList():
+            points += f"{point.x()},{point.y()} "
+        return XMLTree.Element("polygon", {"points" : points,
+                                           "style" : self.__make_SVG_style__()})
     #
     # method to fit the polygon-data into the bounding-box
     #
@@ -98,6 +106,13 @@ class Rectangle(Shape):
 
     def describeShape(self) -> QPolygonF:
         return self.__painterpath__.toFillPolygon()
+    
+    def toSVG(self) -> XMLTree.Element:
+        return XMLTree.Element("rect", { "x" : str(self.topLeft.x()),
+                                         "y" : str(self.topLeft.y()),
+                                         "width" : str(self.size.width()),
+                                         "height" : str(self.size.height()),
+                                         "style" : self.__make_SVG_style__()})
 
 #
 # ellipse primitive
@@ -120,13 +135,20 @@ class Ellipse(Shape):
     def describeShape(self) -> QPolygonF:
         return self.__painterpath__.toFillPolygon()
     
+    def toSVG(self) -> XMLTree.Element:
+        return XMLTree.Element("ellipse", {"cx" : str(self.center.x()), 
+                                           "cy" : str(self.center.y()),
+                                           "rx" : str(self.radii.width()),
+                                           "ry" : str(self.radii.height()),
+                                           "style" : self.__make_SVG_style__()})
+    
     @property 
     def radii(self) -> QSizeF:
-        return 0.5 * super().size
+        return 0.5 * self.size
     
     @radii.setter
     def radii(self, value : QSizeF) -> None:
-        super().size = 2 * value
+        self.size = 2 * value
 
 #
 # circle primitive
@@ -135,11 +157,17 @@ class Circle(Ellipse):
 
     def __init__(self, center : QPointF, radius : float):
         super().__init__(center, QSizeF(radius, radius))
+    
+    def toSVG(self) -> XMLTree.Element:
+        return XMLTree.Element("circle", {"cx" : str(self.center.x()), 
+                                          "cy" : str(self.center.y()),
+                                          "r" : str(self.radius),
+                                          "style" : self.__make_SVG_style__()})
 
     @property
     def radius(self) -> float:
-        return 0.5 * self.radii.width()
-    
+        return self.radii.width()
+
     @radius.setter
     def radius(self, value : float) -> None:
         super().size = 2 * QSizeF(value, value)
