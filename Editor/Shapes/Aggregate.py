@@ -24,15 +24,23 @@ class AggregateShape(Shape):
         super().__init__(findBoundingBoxShapes(shapes))
         self.__calc_ratios__(shapes)
 
+    #
+    # specialization of draw() because multiple painterpaths need to be drawn
+    #
+    def draw(self, painter : QPainter) -> None:
+        for __shape__ in self.__shapes__:
+            __shape__[0].draw(painter)
+        if (self.__show_bounding_box__):
+            painter.setPen(QPen(Shape.boundingBoxColor, Shape.boundingBoxWidth))
+            painter.drawRect(QRectF(self.boundingBox.topLeft(), 
+                                    self.boundingBox.size()))
+
     def update(self) -> None:
         # update and fit all subshapes into shared-bounding-box
         self.__fit_shapes_to_bounding_box__()
         for __shape__ in self.__shapes__:
             __shape__[0].update()
-        # update painterpath
-        self.__painterpath__.clear()
-        for __shape__ in self.__shapes__:
-            self.__painterpath__ = self.__painterpath__.united(__shape__[0].__painterpath__)
+
 
     def describeShape(self) -> QPolygonF:
         res : QPolygonF = QPolygonF()

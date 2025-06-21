@@ -30,7 +30,7 @@ class TranslateArea:
         self.shapeAnchorPoint  : QPointF = QPointF()
 
     def mousePressEvent(self, event : QMouseEvent, shape : Shape) -> None:
-        mouseClickPoint : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+        mouseClickPoint : QPointF = self.camera.view.mapToWorld(Utility.toQPointF(event.pos()))
         if (Utility.PointInRect(mouseClickPoint, self.area)):
             self.clicked = True
             self.anchorPoint = mouseClickPoint
@@ -40,7 +40,7 @@ class TranslateArea:
         self.clicked = False
 
     def mouseMoveEvent(self, event : QMouseEvent, shape : Shape) -> None:
-        delta : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchorPoint
+        delta : QPointF = self.camera.view.mapToWorld(Utility.toQPointF(event.pos())) - self.anchorPoint
         shape.moveTo(self.shapeAnchorPoint) # move to anchor point
         shape.translate(delta) # move about delta
 #
@@ -64,7 +64,7 @@ class ScaleArea:
         self.mode : ScaleAreaMode = mode
 
     def mousePressEvent(self, event : QMouseEvent, shape : Shape) -> None:
-        mouseClickPoint : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+        mouseClickPoint : QPointF = self.camera.view.mapToWorld(Utility.toQPointF(event.pos()))
         if (Utility.PointInRect(mouseClickPoint, self.area)):
             self.clicked = True
             self.anchorPoint = mouseClickPoint
@@ -81,7 +81,7 @@ class ScaleArea:
         self.clicked = False
 
     def mouseMoveEvent(self, event : QMouseEvent, shape : Shape) -> None:
-        delta : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchorPoint
+        delta : QPointF = self.camera.view.mapToWorld(Utility.toQPointF(event.pos())) - self.anchorPoint
         if (self.mode == ScaleAreaMode.TOPLEFT):
             shape.topLeft = self.shapeAnchorPoint + delta
         elif (self.mode == ScaleAreaMode.TOPRIGHT):
@@ -91,13 +91,14 @@ class ScaleArea:
         elif (self.mode == ScaleAreaMode.BOTTOMRIGHT):
             shape.bottomRight = self.shapeAnchorPoint + delta
         
-#
-# editor-edit-shape class
+from Editor.CanvasComponent import CanvasComponent
+## editor-edit-shape class
 #
 # stores information and logic about when an existing shape is edited
 #
-class EditShape:
+class EditShape(CanvasComponent):
     def __init__(self, parent : QWidget, camera : Camera, scene : Scene) -> None:
+        super().__init__()
         self.parent : QWidget = parent
         self.camera : Camera = camera
         self.scene : Scene = scene
@@ -112,8 +113,12 @@ class EditShape:
         self.anchor_point : QPointF = None
         self.dragging : bool = False
 
-        self.active : bool = False
-        self.enabled : bool = False
+    def disable(self) -> None:
+        super().disable()
+        self.dragging = False
+        if not (self.shape is None):
+            self.shape.__show_bounding_box__ = False
+        self.shape = None
 
     def __find_clicked_shape__(self, clickPoint : QPointF) -> Shape | None:
         for shape in reversed(self.scene.attachedShapes):
@@ -138,7 +143,7 @@ class EditShape:
 
     def mousePressEvent(self, event : QMouseEvent) -> None:
         if (self.enabled):
-            mouseClickPoint : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+            mouseClickPoint : QPointF = self.camera.view.mapToWorld(Utility.toQPointF(event.pos()))
             # differentiate between 'a shape is selected' and 'no shape is selected'
             if (self.shape is None):
                 clickedShape : Shape | None = self.__find_clicked_shape__(mouseClickPoint)

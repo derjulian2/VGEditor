@@ -133,13 +133,15 @@ class NewShapeDialog(QDialog):
                 self.shape.SpikeNum = self.numEdges.spinbox.value()
                 self.shape.InnerSize = QSizeF(self.innerRadius.spinbox.value(), self.innerRadius.spinbox.value())
 
+from Editor.CanvasComponent import CanvasComponent
 #
 # editor-new-shape class
 #
 # stores information and logic about when a new shape is created
 #
-class NewShape:
+class NewShape(CanvasComponent):
     def __init__(self, parent : QWidget, camera : Camera, scene : Scene):
+        super().__init__()
         self.parent : QWidget = parent
         self.camera : Camera = camera
         self.scene : Scene = scene
@@ -148,8 +150,9 @@ class NewShape:
         self.anchor_point : QPointF = None
         self.dragging : bool = False
 
-        self.active : bool = False
-        self.enabled : bool = False
+    def disable(self) -> None:
+        super().disable()
+        self.dragging = False
 
     def makeNewShape(self, shape : Shape) -> None:
         if (self.enabled and not self.active):
@@ -165,19 +168,18 @@ class NewShape:
     def mousePressEvent(self, event : QMouseEvent) -> None:
         if (self.enabled and self.active):
             self.parent.setCursor(Qt.CursorShape.CrossCursor)
-            self.anchor_point = self.camera.mapToWorld(Utility.toQPointF(event.pos()))
+            self.anchor_point = self.camera.view.mapToWorld(Utility.toQPointF(event.pos()))
             self.dragging = True
 
     def mouseReleaseEvent(self, event : QMouseEvent) -> None:
         if (self.enabled and self.active):
             self.parent.setCursor(Qt.CursorShape.ArrowCursor)
-            self.dragging = False
-            self.active = False
+            self.disable()
     
     def mouseMoveEvent(self, event : QMouseEvent) -> None:
         if (self.enabled and self.active):
             if (self.dragging):
-                delta : QPointF = self.camera.mapToWorld(Utility.toQPointF(event.pos())) - self.anchor_point
+                delta : QPointF = self.camera.view.mapToWorld(Utility.toQPointF(event.pos())) - self.anchor_point
                 self.shape.center = self.anchor_point + 0.5 * delta
                 self.shape.size = Utility.toQSizeF(delta)
 

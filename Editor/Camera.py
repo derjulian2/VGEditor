@@ -36,28 +36,31 @@ class View:
     def mapToWorld(self, point : QPointF) -> QPointF:
         self.updateTransform()
         return self.transform.inverted()[0].map(point)
-    
+
+from Editor.CanvasComponent import CanvasComponent
 #
 # editor-camera class
 #
 # stores information and logic about viewing the canvas through a view
 #
-class Camera(View):
+class Camera(CanvasComponent):
     def __init__(self, parent : QWidget, viewportSize : QSizeF) -> None:
-        super().__init__(viewportSize, viewportSize)
+        super().__init__()
+        self.view : View = View(viewportSize, viewportSize)
         self.parent : QWidget = parent
 
         self.anchorPoint : QPointF = QPointF()
         self.viewAnchorPoint : QPointF = QPointF()
         self.dragging : bool = False
 
-        self.active : bool = False
-        self.enabled : bool = False
+    def disable(self) -> None:
+        super().disable()
+        self.dragging = False 
 
     def mousePressEvent(self, event : QMouseEvent) -> None:
         if (self.enabled and not self.active):
             self.anchorPoint = Utility.toQPointF(event.pos())
-            self.viewAnchorPoint = self.topLeft
+            self.viewAnchorPoint = self.view.topLeft
             self.dragging = True
             self.parent.setCursor(Qt.CursorShape.SizeAllCursor)
             self.active = True
@@ -71,7 +74,7 @@ class Camera(View):
     def mouseMoveEvent(self, event : QMouseEvent) -> None:
         if (self.enabled and self.active):
             if (self.dragging):
-                self.topLeft = self.viewAnchorPoint + self.mapToWorld(self.anchorPoint) - self.mapToWorld(Utility.toQPointF(event.pos()))
+                self.view.topLeft = self.viewAnchorPoint + self.view.mapToWorld(self.anchorPoint) - self.view.mapToWorld(Utility.toQPointF(event.pos()))
 
     def wheelEvent(self, event : QWheelEvent) -> None:
         if (self.enabled and self.active):
@@ -79,4 +82,4 @@ class Camera(View):
                 self.zoomFactor = Utility.Clamp(self.zoomFactor + 0.05, 0.5, 1.75)
             else:
                 self.zoomFactor = Utility.Clamp(self.zoomFactor - 0.05, 0.5, 1.75)
-            self.zoom(self.zoomFactor)
+            self.view.zoom(self.zoomFactor)

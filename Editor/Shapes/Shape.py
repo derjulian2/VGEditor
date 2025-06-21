@@ -165,6 +165,14 @@ class Shape:
             return self.topRight
         elif (m_state.x() < 0 and m_state.y() < 0):
             return self.bottomRight
+    #
+    # equality operator to compare with address-values (needed for exactly comparing if a shape is another in a scene)
+    # also other comparison isn't really sensible e.g. compare bounding-boxes? or color-values?
+    # python also probably default-defines this
+    #
+    # def __eq__(self, other) -> bool:
+    #     return self is other
+        
 #
 # utility function to determine the smallest bounding-box to encompass a given set of shapes
 #

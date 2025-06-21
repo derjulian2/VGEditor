@@ -172,10 +172,11 @@ class Circle(Ellipse):
     def radius(self, value : float) -> None:
         super().size = 2 * QSizeF(value, value)
 
+
     @Shape.size.setter
     def size(self, value : QSizeF) -> None:
-        abs_max : float = max(abs(value.width()), abs(value.height())) # constraint that a circle must have a square boundingBox
-        self.boundingBox.setSize(QSizeF(abs_max, abs_max))
+        abs_min : float = min(abs(value.width()), abs(value.height())) # constraint that a circle must have a square boundingBox
+        self.boundingBox.setSize(QSizeF(abs_min, abs_min))
 
 #
 # star primitive
